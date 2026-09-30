@@ -119,6 +119,7 @@ async function refresh() {
     const r = await fetch("/api/data", {cache: "no-store"});
     const d = await r.json();
     if (d.empty) { document.getElementById("liveTxt").textContent = "waiting for first data push…"; return; }
+    LATEST = d;
     document.getElementById("dot").classList.add("on");
 
     const acc = d.account || {};
@@ -130,21 +131,7 @@ async function refresh() {
     document.getElementById("dayPl").className = "v " + cls(pl);
     document.getElementById("dayTxt").textContent = "trades today: " + JSON.stringify(acc.trades_today ? Object.values(acc.trades_today).reduce((a,b)=>a+b,0) : 0);
 
-    const rows = w.position_rows || [];
-    document.getElementById("posCount").textContent = rows.length;
-    document.getElementById("posCount").className = "v";
-    document.getElementById("posTxt").textContent = rows.length ? "live now" : "flat — no exposure";
-    document.getElementById("posPanel").innerHTML = rows.length ? `<table>
-      <tr><th>Symbol</th><th>Side</th><th>Lots</th><th>Entry</th><th>Now</th><th>P/L</th><th>SL / TP</th></tr>
-      ${rows.map(p => `<tr>
-        <td><b>${esc(p.symbol)}</b></td>
-        <td class="${p.type === "buy" ? "pos" : "neg"}">${esc(p.type)}</td>
-        <td>${p.volume}</td>
-        <td>${p.open_price}</td>
-        <td>${p.current_price}</td>
-        <td class="${cls(p.profit)}"><b>${sign(p.profit)}</b></td>
-        <td>${p.sl} / ${p.tp}</td>
-      </tr>`).join("")}</table>` : `<div class="empty">No open positions — the bot is watching.</div>`;
+    renderPositions(w.position_rows || []);
 
     const age = (d.received_at || 0) ? Math.floor(Date.now()/1000 - d.received_at) : 999999;
     // bot health = how fresh the data pushes are (watcher ts is an ISO string, use ago() for display)
@@ -219,7 +206,7 @@ async function refresh() {
         }
         return `<tr>
         <td><b>${esc(s)}</b></td>
-        <td>${px ?? "—"}${dist}</td>
+        <td data-sym="${esc(s)}" data-lvl="${lvl ?? ""}" data-side="${t.long_above ? "long" : (t.short_below ? "short" : "")}">${px ?? "—"}${dist}</td>
         <td>${t.long_above ?? "—"}</td><td>${t.short_below ?? "—"}</td><td>${t.close_long_below ?? "—"}</td>
         <td style="max-width:340px">${esc(t.note || "")}</td></tr>`; }).join("")}</table>`
       : `<div class="empty">No levels armed.</div>`;
@@ -244,8 +231,69 @@ async function refresh() {
     document.getElementById("liveTxt").textContent = "reconnecting — showing last known data…";
   }
 }
+function renderPositions(rows) {
+  document.getElementById("posCount").textContent = rows.length;
+  document.getElementById("posCount").className = "v";
+  document.getElementById("posTxt").textContent = rows.length ? "live now" : "flat — no exposure";
+  document.getElementById("posPanel").innerHTML = rows.length ? `<table>
+    <tr><th>Symbol</th><th>Side</th><th>Lots</th><th>Entry</th><th>Now</th><th>P/L</th><th>SL / TP</th></tr>
+    ${rows.map(p => `<tr>
+      <td><b>${esc(p.symbol)}</b></td>
+      <td class="${p.type === "buy" ? "pos" : "neg"}">${esc(p.type)}</td>
+      <td>${p.volume}</td>
+      <td>${p.open_price}</td>
+      <td>${p.current_price}</td>
+      <td class="${cls(p.profit)}"><b>${sign(p.profit)}</b></td>
+      <td>${p.sl} / ${p.tp}</td>
+    </tr>`).join("")}</table>` : `<div class="empty">No open positions — the bot is watching.</div>`;
+}
+
+let LATEST = null;
+function applyTick(tick) {
+  if (!tick) return;
+  if (tick.prices && LATEST) LATEST.prices = tick.prices;
+  const acc = (LATEST && LATEST.account) || {};
+  if (tick.equity != null) {
+    document.getElementById("equity").textContent = "$" + fmt(tick.equity);
+    if (acc.day_start_balance) {
+      const pl = (tick.equity - acc.day_start_balance) / acc.day_start_balance * 100;
+      const el = document.getElementById("dayPl");
+      el.textContent = (pl >= 0 ? "+" : "") + pl.toFixed(2) + "%";
+      el.className = "v " + (pl >= 0 ? "pos" : "neg");
+    }
+  }
+  if (tick.positions) renderPositions(tick.positions);
+  document.querySelectorAll("#trigPanel td[data-sym]").forEach(td => {
+    const sym = td.getAttribute("data-sym");
+    const px = tick.prices ? tick.prices[sym] : null;
+    if (px == null) return;
+    const lvl = parseFloat(td.getAttribute("data-lvl"));
+    const side = td.getAttribute("data-side");
+    let dist = "";
+    if (lvl) {
+      const d2 = (px - lvl) / px * 100;
+      dist = `<div class="lvl">${d2 >= 0 ? "+" : ""}${d2.toFixed(2)}% vs ${side} trigger</div>`;
+    }
+    td.innerHTML = px + dist;
+  });
+}
+
+function connectWS() {
+  try {
+    const proto = location.protocol === "https:" ? "wss://" : "ws://";
+    const ws = new WebSocket(proto + location.host + "/ws");
+    ws.onmessage = ev => {
+      const m = JSON.parse(ev.data);
+      if (m.type === "tick") applyTick(m.tick);
+      if (m.type === "full") { LATEST = m.payload; }
+    };
+    ws.onclose = () => setTimeout(connectWS, 3000);
+  } catch (e) { /* polling fallback keeps working */ }
+}
+
 refresh();
 setInterval(refresh, 30000);
+connectWS();
 </script>
 </body>
 </html>
