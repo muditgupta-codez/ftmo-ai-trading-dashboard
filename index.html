@@ -157,10 +157,15 @@ async function refresh() {
     }
     const evs = (news.events || []).filter(e => e.in_minutes >= 0).slice(0, 5);
     if (evs.length) {
-      newsHtml += `<table><tr><th>When</th><th>Event</th><th>Impact</th></tr>
-        ${evs.map(e => { const m = e.in_minutes; const dur = m >= 60 ? \`\${Math.floor(m/60)}h\${String(m%60).padStart(2,"0")}m\` : m + "min";
-          return \`<tr><td>in \${dur}</td><td>\${esc(e.country)} \${esc(e.title)}</td>
-          <td class="\${e.impact === "High" ? "neg" : "amber"}">\${esc(e.impact)}</td></tr>\`; }).join("")}</table>`;
+      let rows = "";
+      evs.forEach(e => {
+        const m = e.in_minutes;
+        const dur = m >= 60 ? Math.floor(m/60) + "h" + String(m%60).padStart(2, "0") + "m" : m + "min";
+        const impactCls = e.impact === "High" ? "neg" : "amber";
+        rows += '<tr><td>in ' + dur + '</td><td>' + esc(e.country) + ' ' + esc(e.title) +
+                '</td><td class="' + impactCls + '">' + esc(e.impact) + '</td></tr>';
+      });
+      newsHtml += '<table><tr><th>When</th><th>Event</th><th>Impact</th></tr>' + rows + '</table>';
     } else { newsHtml += `<div class="empty">No rated events in the next 48h.</div>`; }
     const heads = (news.headlines || []).slice(0, 8);
     if (heads.length) {
