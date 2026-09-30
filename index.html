@@ -97,7 +97,11 @@ const sign = n => (n >= 0 ? "+" : "") + fmt(n);
 const cls = n => n >= 0 ? "pos" : "neg";
 const ago = ts => {
   if (!ts) return "—";
-  const s = Math.floor(Date.now()/1000 - ts);
+  let t = ts;
+  if (typeof t === "string") t = new Date(t).getTime() / 1000;  // ISO strings from the watcher
+  if (!isFinite(t)) return "—";
+  const s = Math.floor(Date.now() / 1000 - t);
+  if (s < 0) return "just now";
   if (s < 90) return s + "s ago";
   if (s < 5400) return Math.floor(s/60) + "m ago";
   if (s < 172800) return Math.floor(s/3600) + "h ago";
@@ -143,11 +147,12 @@ async function refresh() {
       </tr>`).join("")}</table>` : `<div class="empty">No open positions — the bot is watching.</div>`;
 
     const age = (d.received_at || 0) ? Math.floor(Date.now()/1000 - d.received_at) : 999999;
-    const wAge = w.ts ? Math.floor(Date.now()/1000 - w.ts) : 999999;
-    const alive = wAge < 300;
-    document.getElementById("botState").textContent = alive ? "Running" : "Stalled";
+    // bot health = how fresh the data pushes are (watcher ts is an ISO string, use ago() for display)
+    const alive = age < 180;
+    document.getElementById("botState").textContent = alive ? "Running" : "Data stale";
     document.getElementById("botState").className = "v " + (alive ? "pos" : "amber");
-    document.getElementById("botTxt").textContent = `watcher ${ago(w.ts)} · push ${ago(d.received_at)} · brain ${esc((w.brain && w.brain.last_result) || "idle")}`;
+    const brainTxt = (w.brain && w.brain.last_result) ? w.brain.last_result : "idle";
+    document.getElementById("botTxt").textContent = `watcher ${ago(w.ts)} · push ${ago(d.received_at)} · brain ${esc(brainTxt === "skipped" ? "monitoring" : brainTxt)}`;
     if (acc.halted) document.getElementById("botTxt").textContent += " · HALTED";
 
     const news = d.news || {};
@@ -216,9 +221,13 @@ async function refresh() {
 
     document.getElementById("journal").textContent = d.journal || "(journal empty)";
     document.getElementById("foot").textContent = `FTMO demo ${acc.login ? "•••" + String(acc.login).slice(-4) : ""} @ ${acc.server || "—"} · last push ${ago(d.received_at)} · auto-refresh 30s`;
-    document.getElementById("liveTxt").textContent = "live";
+    // live label reflects DATA freshness, not one lucky/unlucky fetch —
+    // flaky networks (e.g. a broken IPv6 path) shouldn't scare the user
+    const fresh = (d.received_at || 0) > Date.now()/1000 - 300;
+    document.getElementById("dot").classList.toggle("on", fresh);
+    document.getElementById("liveTxt").textContent = fresh ? "live" : "data stale — reconnecting…";
   } catch (e) {
-    document.getElementById("liveTxt").textContent = "connection error — retrying…";
+    document.getElementById("liveTxt").textContent = "reconnecting — showing last known data…";
   }
 }
 refresh();
