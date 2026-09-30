@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0f14">
 <title>FTMO AI Trading Bot</title>
 <style>
   :root {
@@ -52,6 +53,27 @@
         border-radius: 12px; padding: 13px; font-size: 12.5px; line-height: 1.5;
         font-family: ui-monospace, Consolas, monospace; max-height: 420px; overflow: auto; }
   .foot { margin-top: 26px; text-align: center; color: var(--muted); font-size: 11.5px; }
+
+  /* ---- phone ---- */
+  @media (max-width: 640px) {
+    .wrap { padding: 12px 10px 50px; }
+    h1 { font-size: 16.5px; }
+    h2 { margin: 16px 0 6px; }
+    .cards { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
+    .card { padding: 11px 12px; }
+    .card .v { font-size: 19px; }
+    th { display: none; }
+    table td { display: inline-block; border-bottom: none; padding: 3px 8px 3px 0; font-size: 12.5px; }
+    table tr { display: block; padding: 8px 11px; border-bottom: 1px solid var(--line); }
+    table tr:last-child { border-bottom: none; }
+    td::before { content: attr(data-l); color: var(--muted); font-size: 10px;
+                 text-transform: uppercase; letter-spacing: .05em; margin-right: 5px; }
+    td:first-child { display: block; margin-bottom: 3px; }
+    td:first-child::before { content: ""; margin: 0; }
+    .dec { padding: 10px 11px; }
+    .why { font-size: 12.5px; }
+    .foot { margin-top: 18px; }
+  }
 </style>
 </head>
 <body>
@@ -154,8 +176,8 @@ async function refresh() {
         const m = e.in_minutes;
         const dur = m >= 60 ? Math.floor(m/60) + "h" + String(m%60).padStart(2, "0") + "m" : m + "min";
         const impactCls = e.impact === "High" ? "neg" : "amber";
-        rows += '<tr><td>in ' + dur + '</td><td>' + esc(e.country) + ' ' + esc(e.title) +
-                '</td><td class="' + impactCls + '">' + esc(e.impact) + '</td></tr>';
+        rows += '<tr><td data-l="in">' + dur + '</td><td data-l="">' + esc(e.country) + ' ' + esc(e.title) +
+                '</td><td data-l="impact" class="' + impactCls + '">' + esc(e.impact) + '</td></tr>';
       });
       newsHtml += '<table><tr><th>When</th><th>Event</th><th>Impact</th></tr>' + rows + '</table>';
     } else { newsHtml += `<div class="empty">No rated events in the next 48h.</div>`; }
@@ -207,7 +229,7 @@ async function refresh() {
         return `<tr>
         <td><b>${esc(s)}</b></td>
         <td data-sym="${esc(s)}" data-lvl="${lvl ?? ""}" data-side="${t.long_above ? "long" : (t.short_below ? "short" : "")}">${px ?? "—"}${dist}</td>
-        <td>${t.long_above ?? "—"}</td><td>${t.short_below ?? "—"}</td><td>${t.close_long_below ?? "—"}</td>
+        <td data-l="long >">${t.long_above ?? "—"}</td><td data-l="short <">${t.short_below ?? "—"}</td><td data-l="exit <">${t.close_long_below ?? "—"}</td>
         <td style="max-width:340px">${esc(t.note || "")}</td></tr>`; }).join("")}</table>`
       : `<div class="empty">No levels armed.</div>`;
 
@@ -215,9 +237,9 @@ async function refresh() {
     document.getElementById("tradePanel").innerHTML = trades.length ? `<table>
       <tr><th>Time</th><th>Symbol</th><th>Action</th><th>Lots</th><th>Price</th><th>SL</th><th>TP</th><th>Ticket</th></tr>
       ${trades.map(t => `<tr>
-        <td>${esc((t.ts || "").replace("T", " ").slice(0, 16))}</td><td><b>${esc(t.symbol)}</b></td>
-        <td class="${t.action === "buy" ? "pos" : "neg"}">${esc(t.action)}</td><td>${t.lots}</td>
-        <td>${t.price}</td><td>${t.sl}</td><td>${t.tp}</td><td>${t.ticket}</td></tr>`).join("")}</table>`
+        <td data-l="">${esc((t.ts || "").replace("T", " ").slice(0, 16))}</td><td data-l=""><b>${esc(t.symbol)}</b></td>
+        <td data-l="" class="${t.action === "buy" ? "pos" : "neg"}">${esc(t.action)}</td><td data-l="lots">${t.lots}</td>
+        <td data-l="@">${t.price}</td><td data-l="sl">${t.sl}</td><td data-l="tp">${t.tp}</td><td data-l="#">${t.ticket}</td></tr>`).join("")}</table>`
       : `<div class="empty">No trades yet.</div>`;
 
     document.getElementById("journal").textContent = d.journal || "(journal empty)";
@@ -238,13 +260,13 @@ function renderPositions(rows) {
   document.getElementById("posPanel").innerHTML = rows.length ? `<table>
     <tr><th>Symbol</th><th>Side</th><th>Lots</th><th>Entry</th><th>Now</th><th>P/L</th><th>SL / TP</th></tr>
     ${rows.map(p => `<tr>
-      <td><b>${esc(p.symbol)}</b></td>
-      <td class="${p.type === "buy" ? "pos" : "neg"}">${esc(p.type)}</td>
-      <td>${p.volume}</td>
-      <td>${p.open_price}</td>
-      <td>${p.current_price}</td>
-      <td class="${cls(p.profit)}"><b>${sign(p.profit)}</b></td>
-      <td>${p.sl} / ${p.tp}</td>
+      <td data-l=""><b>${esc(p.symbol)}</b></td>
+      <td data-l="side" class="${p.type === "buy" ? "pos" : "neg"}">${esc(p.type)}</td>
+      <td data-l="lots">${p.volume}</td>
+      <td data-l="entry">${p.open_price}</td>
+      <td data-l="now">${p.current_price}</td>
+      <td data-l="p/l" class="${cls(p.profit)}"><b>${sign(p.profit)}</b></td>
+      <td data-l="sl / tp">${p.sl} / ${p.tp}</td>
     </tr>`).join("")}</table>` : `<div class="empty">No open positions — the bot is watching.</div>`;
 }
 
