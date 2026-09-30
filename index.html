@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FTMO AI Trading Bot</title>
+<style>
+  :root {
+    --bg: #0b0f14; --card: #131a23; --line: #223042; --text: #e6edf3;
+    --muted: #8b98a5; --green: #2ea86c; --red: #e05252; --amber: #d9a53b; --blue: #4c8dff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 18px 14px 60px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  h1 { font-size: 19px; margin: 0; }
+  .live { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); }
+  .dot.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 13px 14px; }
+  .card .k { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .card .v { font-size: 22px; font-weight: 700; margin-top: 5px; }
+  .card .s { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .pos { color: var(--green); } .neg { color: var(--red); } .amber { color: var(--amber); }
+  h2 { font-size: 13.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin: 22px 0 8px; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; }
+  tr:last-child td { border-bottom: none; }
+  .empty { padding: 16px; color: var(--muted); font-size: 13.5px; }
+  .feed { display: flex; flex-direction: column; }
+  .dec { padding: 11px 13px; border-bottom: 1px solid var(--line); }
+  .dec:last-child { border-bottom: none; }
+  .dec .top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .dec .sym { font-weight: 700; color: var(--text); font-size: 13.5px; }
+  .badge { padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+  .b-buy  { background: rgba(46,168,108,.16); color: var(--green); }
+  .b-sell { background: rgba(224,82,82,.16);  color: var(--red); }
+  .b-hold { background: rgba(76,141,255,.14); color: var(--blue); }
+  .b-close{ background: rgba(217,165,59,.16); color: var(--amber); }
+  .b-rej  { background: rgba(224,82,82,.16); color: var(--red); }
+  .dec .why { margin-top: 5px; font-size: 13px; line-height: 1.45; }
+  .lvl { margin-top: 4px; font-size: 12px; color: var(--muted); }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 20px; background: var(--line);
+          font-size: 11.5px; color: var(--muted); margin-right: 6px; }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; color: var(--blue); font-size: 13.5px; }
+  pre { white-space: pre-wrap; background: var(--card); border: 1px solid var(--line);
+        border-radius: 12px; padding: 13px; font-size: 12.5px; line-height: 1.5;
+        font-family: ui-monospace, Consolas, monospace; max-height: 420px; overflow: auto; }
+  .foot { margin-top: 26px; text-align: center; color: var(--muted); font-size: 11.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>FTMO AI Trading Bot</h1>
+    <div class="live"><span class="dot" id="dot"></span><span id="liveTxt">connecting…</span></div>
+  </header>
+
+  <div class="cards">
+    <div class="card"><div class="k">Equity</div><div class="v" id="equity">—</div><div class="s" id="balTxt">—</div></div>
+    <div class="card"><div class="k">Today</div><div class="v" id="dayPl">—</div><div class="s" id="dayTxt">since day start</div></div>
+    <div class="card"><div class="k">Open positions</div><div class="v" id="posCount">—</div><div class="s" id="posTxt">—</div></div>
+    <div class="card"><div class="k">Bot status</div><div class="v" id="botState">—</div><div class="s" id="botTxt">—</div></div>
+  </div>
+
+  <h2>Open positions</h2>
+  <div class="panel" id="posPanel"><div class="empty">Loading…</div></div>
+
+  <h2>Latest AI decisions</h2>
+  <div class="panel"><div class="feed" id="feed"><div class="empty">Loading…</div></div></div>
+
+  <h2>Armed trigger levels</h2>
+  <div class="panel" id="trigPanel"><div class="empty">Loading…</div></div>
+
+  <h2>Trade history</h2>
+  <div class="panel" id="tradePanel"><div class="empty">Loading…</div></div>
+
+  <details>
+    <summary>AI journal (the bot's thinking, newest last)</summary>
+    <pre id="journal">Loading…</pre>
+  </details>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+const fmt = n => (n === null || n === undefined) ? "—" : Number(n).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const sign = n => (n >= 0 ? "+" : "") + fmt(n);
+const cls = n => n >= 0 ? "pos" : "neg";
+const ago = ts => {
+  if (!ts) return "—";
+  const s = Math.floor(Date.now()/1000 - ts);
+  if (s < 90) return s + "s ago";
+  if (s < 5400) return Math.floor(s/60) + "m ago";
+  if (s < 172800) return Math.floor(s/3600) + "h ago";
+  return Math.floor(s/86400) + "d ago";
+};
+const esc = t => (t ?? "").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function badge(action, rejected) {
+  if (rejected) return `<span class="badge b-rej">REJECTED</span>`;
+  return `<span class="badge b-${esc(action)}">${esc(action.toUpperCase())}</span>`;
+}
+
+async function refresh() {
+  try {
+    const r = await fetch("/api/data", {cache: "no-store"});
+    const d = await r.json();
+    if (d.empty) { document.getElementById("liveTxt").textContent = "waiting for first data push…"; return; }
+    document.getElementById("dot").classList.add("on");
+
+    const acc = d.account || {};
+    const w = d.watcher || {};
+    document.getElementById("equity").textContent = "$" + fmt(acc.equity);
+    document.getElementById("balTxt").textContent = "balance $" + fmt(acc.balance);
+    const pl = acc.daily_pl_pct ?? 0;
+    document.getElementById("dayPl").textContent = sign(pl) + "%";
+    document.getElementById("dayPl").className = "v " + cls(pl);
+    document.getElementById("dayTxt").textContent = "trades today: " + JSON.stringify(acc.trades_today ? Object.values(acc.trades_today).reduce((a,b)=>a+b,0) : 0);
+
+    const rows = w.position_rows || [];
+    document.getElementById("posCount").textContent = rows.length;
+    document.getElementById("posCount").className = "v";
+    document.getElementById("posTxt").textContent = rows.length ? "live now" : "flat — no exposure";
+    document.getElementById("posPanel").innerHTML = rows.length ? `<table>
+      <tr><th>Symbol</th><th>Side</th><th>Lots</th><th>Entry</th><th>Now</th><th>P/L</th><th>SL / TP</th></tr>
+      ${rows.map(p => `<tr>
+        <td><b>${esc(p.symbol)}</b></td>
+        <td class="${p.type === "buy" ? "pos" : "neg"}">${esc(p.type)}</td>
+        <td>${p.volume}</td>
+        <td>${p.open_price}</td>
+        <td>${p.current_price}</td>
+        <td class="${cls(p.profit)}"><b>${sign(p.profit)}</b></td>
+        <td>${p.sl} / ${p.tp}</td>
+      </tr>`).join("")}</table>` : `<div class="empty">No open positions — the bot is watching.</div>`;
+
+    const age = (d.received_at || 0) ? Math.floor(Date.now()/1000 - d.received_at) : 999999;
+    const wAge = w.ts ? Math.floor(Date.now()/1000 - w.ts) : 999999;
+    const alive = wAge < 300;
+    document.getElementById("botState").textContent = alive ? "Running" : "Stalled";
+    document.getElementById("botState").className = "v " + (alive ? "pos" : "amber");
+    document.getElementById("botTxt").textContent = `watcher ${ago(w.ts)} · push ${ago(d.received_at)} · brain ${esc((w.brain && w.brain.last_result) || "idle")}`;
+    if (acc.halted) document.getElementById("botTxt").textContent += " · HALTED";
+
+    const decs = (d.decisions || []).slice().reverse();
+    document.getElementById("feed").innerHTML = decs.slice(0, 18).map(x =>
+      x.decisions.map(dd => {
+        const res = x.results && x.results[x.decisions.indexOf(dd)] || {};
+        const rejected = res && res.ok === false;
+        const lots = res && res.lots ? ` · ${res.lots} lots @ ${res.price}` : "";
+        const lvl = (dd.stop_loss || dd.take_profit) ? `<div class="lvl">SL ${dd.stop_loss ?? "—"} · TP ${dd.take_profit ?? "—"} · R:R target ≥1.5</div>` : "";
+        return `<div class="dec">
+          <div class="top"><span class="sym">${esc(dd.symbol)}</span>${badge(dd.action, rejected)}
+          <span>conf ${dd.confidence ?? "—"}</span><span>·</span><span>${esc(x.model ? x.model.split("/").pop() : "")}</span>
+          <span>·</span><span>${x.latency_s}s</span><span>·</span><span>${esc((x.ts || "").replace("T", " ").slice(0, 16))}</span></div>
+          <div class="why">${esc(dd.reason || "")}${lots}</div>${lvl}
+        </div>`;
+      }).join("")).join("") || `<div class="empty">No decisions yet.</div>`;
+
+    const trig = (d.triggers && d.triggers.triggers) || {};
+    const tKeys = Object.keys(trig);
+    document.getElementById("trigPanel").innerHTML = tKeys.length ? `<table>
+      <tr><th>Symbol</th><th>Long above</th><th>Short below</th><th>Exit long if below</th><th>Plan</th></tr>
+      ${tKeys.map(s => { const t = trig[s]; return `<tr>
+        <td><b>${esc(s)}</b></td>
+        <td>${t.long_above ?? "—"}</td><td>${t.short_below ?? "—"}</td><td>${t.close_long_below ?? "—"}</td>
+        <td style="max-width:340px">${esc(t.note || "")}</td></tr>`; }).join("")}</table>`
+      : `<div class="empty">No levels armed.</div>`;
+
+    const trades = (d.trades || []).slice().reverse();
+    document.getElementById("tradePanel").innerHTML = trades.length ? `<table>
+      <tr><th>Time</th><th>Symbol</th><th>Action</th><th>Lots</th><th>Price</th><th>SL</th><th>TP</th><th>Ticket</th></tr>
+      ${trades.map(t => `<tr>
+        <td>${esc((t.ts || "").replace("T", " ").slice(0, 16))}</td><td><b>${esc(t.symbol)}</b></td>
+        <td class="${t.action === "buy" ? "pos" : "neg"}">${esc(t.action)}</td><td>${t.lots}</td>
+        <td>${t.price}</td><td>${t.sl}</td><td>${t.tp}</td><td>${t.ticket}</td></tr>`).join("")}</table>`
+      : `<div class="empty">No trades yet.</div>`;
+
+    document.getElementById("journal").textContent = d.journal || "(journal empty)";
+    document.getElementById("foot").textContent = `FTMO demo ${acc.login ? "•••" + String(acc.login).slice(-4) : ""} @ ${acc.server || "—"} · last push ${ago(d.received_at)} · auto-refresh 30s`;
+    document.getElementById("liveTxt").textContent = "live";
+  } catch (e) {
+    document.getElementById("liveTxt").textContent = "connection error — retrying…";
+  }
+}
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>
