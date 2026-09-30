@@ -207,10 +207,19 @@ async function refresh() {
 
     const trig = (d.triggers && d.triggers.triggers) || {};
     const tKeys = Object.keys(trig);
+    const prices = d.prices || {};
     document.getElementById("trigPanel").innerHTML = tKeys.length ? `<table>
-      <tr><th>Symbol</th><th>Long above</th><th>Short below</th><th>Exit long if below</th><th>Plan</th></tr>
-      ${tKeys.map(s => { const t = trig[s]; return `<tr>
+      <tr><th>Symbol</th><th>Now</th><th>Long above</th><th>Short below</th><th>Exit long if below</th><th>Plan</th></tr>
+      ${tKeys.map(s => { const t = trig[s]; const px = prices[s];
+        let dist = "";
+        if (px) {
+          const lvl = t.long_above ?? t.short_below;
+          if (lvl) { const d2 = ((px - lvl) / px * 100);
+            dist = `<div class="lvl">${d2 >= 0 ? "+" : ""}${d2.toFixed(2)}% vs ${t.long_above ? "long" : "short"} trigger</div>`; }
+        }
+        return `<tr>
         <td><b>${esc(s)}</b></td>
+        <td>${px ?? "—"}${dist}</td>
         <td>${t.long_above ?? "—"}</td><td>${t.short_below ?? "—"}</td><td>${t.close_long_below ?? "—"}</td>
         <td style="max-width:340px">${esc(t.note || "")}</td></tr>`; }).join("")}</table>`
       : `<div class="empty">No levels armed.</div>`;
