@@ -198,11 +198,11 @@ async function refresh() {
     document.getElementById("trigPanel").innerHTML = tKeys.length ? `<table>
       <tr><th>Symbol</th><th>Now</th><th>Long above</th><th>Short below</th><th>Exit long if below</th><th>Plan</th></tr>
       ${tKeys.map(s => { const t = trig[s]; const px = prices[s];
+        const lvl = px ? (t.long_above ?? t.short_below) : null;
         let dist = "";
-        if (px) {
-          const lvl = t.long_above ?? t.short_below;
-          if (lvl) { const d2 = ((px - lvl) / px * 100);
-            dist = `<div class="lvl">${d2 >= 0 ? "+" : ""}${d2.toFixed(2)}% vs ${t.long_above ? "long" : "short"} trigger</div>`; }
+        if (px && lvl) {
+          const d2 = ((px - lvl) / px * 100);
+          dist = `<div class="lvl">${d2 >= 0 ? "+" : ""}${d2.toFixed(2)}% vs ${t.long_above ? "long" : "short"} trigger</div>`;
         }
         return `<tr>
         <td><b>${esc(s)}</b></td>
