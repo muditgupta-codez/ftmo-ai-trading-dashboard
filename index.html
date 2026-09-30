@@ -183,22 +183,27 @@ async function refresh() {
     document.getElementById("newsPanel").innerHTML = newsHtml || `<div class="empty">News unavailable.</div>`;
 
     const decs = (d.decisions || []).filter(x => Array.isArray(x.decisions) && x.mode !== "weekly").slice().reverse();
-    document.getElementById("feed").innerHTML = decs.slice(0, 18).map(x =>
-      x.decisions.map(dd => {
-        const res = x.results && x.results[x.decisions.indexOf(dd)] || {};
-        const rejected = res && res.ok === false;
-        const lots = res && res.lots ? ` · ${res.lots} lots @ ${res.price}` : "";
-        const lvl = (dd.stop_loss || dd.take_profit) ? `<div class="lvl">SL ${dd.stop_loss ?? "—"} · TP ${dd.take_profit ?? "—"} · R:R target ≥1.5</div>` : "";
-        return `<div class="dec">
-          <div class="top"><span class="sym">${esc(dd.symbol)}</span>${badge(dd.action, rejected)}
-          <span>conf ${dd.confidence ?? "—"}</span>
-          ${dd.regime ? `<span class="pill">${esc(dd.regime)}</span>` : ""}
-          ${dd.approach ? `<span class="pill">${esc(dd.approach)}</span>` : ""}
-          <span>·</span><span>${esc(x.model ? x.model.split("/").pop() : "")}</span>
-          <span>·</span><span>${x.latency_s}s</span><span>·</span><span>${esc((x.ts || "").replace("T", " ").slice(0, 16))}</span></div>
-          <div class="why">${esc(dd.reason || "")}${lots}</div>${lvl}
-        </div>`;
-      }).join("")).join("") || `<div class="empty">No decisions yet.</div>`;
+    const flat = [];
+    decs.forEach(x => {
+      (x.decisions || []).forEach((dd, i) => {
+        flat.push({ dd, res: (x.results && x.results[i]) || {}, meta: x });
+      });
+    });
+    document.getElementById("feed").innerHTML = flat.slice(0, 10).map(item => {
+      const dd = item.dd, res = item.res, meta = item.meta;
+      const rejected = res && res.ok === false;
+      const lots = res && res.lots ? ` · ${res.lots} lots @ ${res.price}` : "";
+      const lvl = (dd.stop_loss || dd.take_profit) ? `<div class="lvl">SL ${dd.stop_loss ?? "—"} · TP ${dd.take_profit ?? "—"} · R:R target ≥1.5</div>` : "";
+      return `<div class="dec">
+        <div class="top"><span class="sym">${esc(dd.symbol)}</span>${badge(dd.action, rejected)}
+        <span>conf ${dd.confidence ?? "—"}</span>
+        ${dd.regime ? `<span class="pill">${esc(dd.regime)}</span>` : ""}
+        ${dd.approach ? `<span class="pill">${esc(dd.approach)}</span>` : ""}
+        <span>·</span><span>${esc(meta.model ? meta.model.split("/").pop() : "")}</span>
+        <span>·</span><span>${meta.latency_s}s</span><span>·</span><span>${esc((meta.ts || "").replace("T", " ").slice(0, 16))}</span></div>
+        <div class="why">${esc(dd.reason || "")}${lots}</div>${lvl}
+      </div>`;
+    }).join("") || `<div class="empty">No decisions yet.</div>`;
 
     const trig = (d.triggers && d.triggers.triggers) || {};
     const tKeys = Object.keys(trig);
