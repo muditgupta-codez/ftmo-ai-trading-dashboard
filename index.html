@@ -102,6 +102,9 @@
   <h2>Latest AI decisions</h2>
   <div class="panel"><div class="feed" id="feed"><div class="empty">Loading…</div></div></div>
 
+  <h2>Rejected &amp; shadow trades</h2>
+  <div class="panel" id="rejPanel"><div class="empty">Loading…</div></div>
+
   <details>
     <summary>AI journal (the bot's thinking, newest last)</summary>
     <pre id="journal">Loading…</pre>
@@ -216,6 +219,8 @@ async function refresh() {
 
     const trig = (d.triggers && d.triggers.triggers) || {};
     const tKeys = Object.keys(trig);
+    renderRejected(d);
+
     const prices = d.prices || {};
     document.getElementById("trigPanel").innerHTML = tKeys.length ? `<table>
       <tr><th>Symbol</th><th>Now</th><th>Long above</th><th>Short below</th><th>Exit long if below</th><th>Plan</th></tr>
@@ -253,6 +258,51 @@ async function refresh() {
     document.getElementById("liveTxt").textContent = "reconnecting — showing last known data…";
   }
 }
+function statusBadge(s) {
+  if (s === "win") return '<span class="badge b-buy">WIN</span>';
+  if (s === "loss") return '<span class="badge b-rej">LOSS</span>';
+  if (s === "open") return '<span class="badge b-close">OPEN</span>';
+  if (s === "expired") return '<span class="badge" style="background:var(--line);color:var(--muted)">EXPIRED</span>';
+  return '<span class="badge" style="background:var(--line);color:var(--muted)">' + esc(s || "—") + '</span>';
+}
+
+function renderRejected(d) {
+  const shadows = (d.shadow || []).slice().reverse();
+  const blocked = [];
+  (d.decisions || []).forEach(x => {
+    if (!Array.isArray(x.decisions)) return;
+    (x.decisions || []).forEach((dd, i) => {
+      const res = (x.results && x.results[i]) || {};
+      if (res && res.ok === false && ["buy", "sell", "close"].includes(dd.action)) {
+        blocked.push({ ts: x.ts, dd, reason: res.reason || "" });
+      }
+    });
+  });
+  let html = "";
+  if (shadows.length) {
+    html += '<div style="padding:9px 13px 2px;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em">Declined by the AI — tracked hypothetically</div>' +
+      '<table><tr><th>When</th><th>Setup</th><th>Entry</th><th>SL / TP</th><th>Outcome</th><th>Note</th></tr>' +
+      shadows.map(s => {
+        const r = s.status === "resolved" ? (s.result === "win" ? "WIN " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R"
+                 : "LOSS " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R") : s.status;
+        return '<tr><td data-l="">' + esc((s.ts_str || "").replace("T", " ").slice(5, 16)) + '</td>' +
+          '<td data-l=""><b>' + esc(s.symbol) + '</b> ' + esc(s.action) + '</td>' +
+          '<td data-l="entry">' + s.entry + '</td>' +
+          '<td data-l="sl / tp">' + s.sl + ' / ' + s.tp + '</td>' +
+          '<td data-l="result">' + statusBadge(r) + '</td>' +
+          '<td data-l="why" style="max-width:300px">' + esc(s.why_refused || s.strategy || "") + '</td></tr>';
+      }).join("") + '</table>';
+  }
+  if (blocked.length) {
+    html += '<div style="padding:9px 13px 2px;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em">Blocked by risk guardrails</div><table>' +
+      blocked.slice(0, 10).map(b => '<tr><td data-l="">' + esc((b.ts || "").replace("T", " ").slice(5, 16)) + '</td>' +
+        '<td data-l=""><b>' + esc(b.dd.symbol) + '</b> ' + esc(b.dd.action) + ' (conf ' + esc(b.dd.confidence) + ')</td>' +
+        '<td data-l="reason" style="max-width:340px">' + esc(b.reason) + '</td></tr>').join("") + '</table>';
+  }
+  document.getElementById("rejPanel").innerHTML =
+    html || '<div class="empty">No rejected or declined setups — nothing refused yet.</div>';
+}
+
 function renderPositions(rows) {
   document.getElementById("posCount").textContent = rows.length;
   document.getElementById("posCount").className = "v";
