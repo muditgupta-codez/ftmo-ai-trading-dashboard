@@ -71,6 +71,9 @@
   <h2>Open positions</h2>
   <div class="panel" id="posPanel"><div class="empty">Loading…</div></div>
 
+  <h2>Live news & economic calendar</h2>
+  <div class="panel" id="newsPanel"><div class="empty">Loading…</div></div>
+
   <h2>Latest AI decisions</h2>
   <div class="panel"><div class="feed" id="feed"><div class="empty">Loading…</div></div></div>
 
@@ -146,6 +149,28 @@ async function refresh() {
     document.getElementById("botState").className = "v " + (alive ? "pos" : "amber");
     document.getElementById("botTxt").textContent = `watcher ${ago(w.ts)} · push ${ago(d.received_at)} · brain ${esc((w.brain && w.brain.last_result) || "idle")}`;
     if (acc.halted) document.getElementById("botTxt").textContent += " · HALTED";
+
+    const news = d.news || {};
+    let newsHtml = "";
+    if (news.red_flag_imminent) {
+      newsHtml += `<div class="empty" style="color:var(--red)"><b>⚠ RED-FLAG NEWS IMMINENT — new entries blocked by doctrine</b></div>`;
+    }
+    const evs = (news.events || []).filter(e => e.in_minutes >= 0).slice(0, 5);
+    if (evs.length) {
+      newsHtml += `<table><tr><th>When</th><th>Event</th><th>Impact</th></tr>
+        ${evs.map(e => { const m = e.in_minutes; const dur = m >= 60 ? \`\${Math.floor(m/60)}h\${String(m%60).padStart(2,"0")}m\` : m + "min";
+          return \`<tr><td>in \${dur}</td><td>\${esc(e.country)} \${esc(e.title)}</td>
+          <td class="\${e.impact === "High" ? "neg" : "amber"}">\${esc(e.impact)}</td></tr>\`; }).join("")}</table>`;
+    } else { newsHtml += `<div class="empty">No rated events in the next 48h.</div>`; }
+    const heads = (news.headlines || []).slice(0, 8);
+    if (heads.length) {
+      newsHtml += `<div style="padding:10px 13px">` + heads.map(h => {
+        const t = typeof h === "string" ? h : h.title;
+        const src = typeof h === "object" && h.source ? ` <span style="color:var(--muted);font-size:11px">[${esc(h.source)}]</span>` : "";
+        return `<div style="padding:3px 0;font-size:13px;line-height:1.4">• ${esc(t)}${src}</div>`;
+      }).join("") + `</div>`;
+    }
+    document.getElementById("newsPanel").innerHTML = newsHtml || `<div class="empty">News unavailable.</div>`;
 
     const decs = (d.decisions || []).slice().reverse();
     document.getElementById("feed").innerHTML = decs.slice(0, 18).map(x =>
