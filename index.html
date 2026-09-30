@@ -182,7 +182,7 @@ async function refresh() {
     }
     document.getElementById("newsPanel").innerHTML = newsHtml || `<div class="empty">News unavailable.</div>`;
 
-    const decs = (d.decisions || []).slice().reverse();
+    const decs = (d.decisions || []).filter(x => Array.isArray(x.decisions) && x.mode !== "weekly").slice().reverse();
     document.getElementById("feed").innerHTML = decs.slice(0, 18).map(x =>
       x.decisions.map(dd => {
         const res = x.results && x.results[x.decisions.indexOf(dd)] || {};
