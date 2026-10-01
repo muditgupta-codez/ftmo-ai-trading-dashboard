@@ -356,8 +356,8 @@ function twoStepBlock(name, equity, initial, dailyUsedPct, footnote) {
     </div>
     <div class="bar" style="position:relative"><div style="width:${bar}%"></div>
       <div style="position:absolute;left:${s1Mark}%;top:0;bottom:0;width:2px;background:var(--amber)"></div></div>
-    <div class="lvl" style="margin-top:5px">Step 1 · +10% → $${fmt(S1)} ${st(equity >= S1, s1Prog, false)}
-    &nbsp;·&nbsp; Step 2 · +5% → $${fmt(S2)} ${st(equity >= S2, s2Prog, equity < S1)}</div>
+    <div class="lvl" style="margin-top:5px">Step 1 · +10% → $${fmt(S1)} · ${st(equity >= S1, s1Prog, false)}
+    &nbsp;·&nbsp; Step 2 · +5% → $${fmt(S2)} · ${st(equity >= S2, s2Prog, equity < S1)}</div>
     <div class="lvl" style="margin-top:4px">Equity $${fmt(equity)} · loss floor $${fmt(floor)} (−10%) · buffer <span class="${buf >= 0 ? "pos" : "neg"}">${buf >= 0 ? "+" : ""}$${fmt(buf)}</span>${daily != null ? " · daily-loss used " + daily.toFixed(0) + "% of −5%" : ""}</div>
     ${footnote ? `<div class="lvl" style="margin-top:3px;color:var(--muted)">${footnote}</div>` : ""}
   </div>`;
