@@ -26,6 +26,14 @@
   .card .s { font-size: 12px; color: var(--muted); margin-top: 3px; }
   .pos { color: var(--green); } .neg { color: var(--red); } .amber { color: var(--amber); }
   h2 { font-size: 13.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin: 22px 0 8px; }
+  details.sec { margin: 16px 0 6px; }
+  details.sec > summary { cursor: pointer; font-size: 13.5px; color: var(--muted); text-transform: uppercase;
+                           letter-spacing: .07em; list-style: none; display: flex; align-items: center;
+                           gap: 7px; user-select: none; }
+  details.sec > summary::-webkit-details-marker { display: none; }
+  details.sec > summary::before { content: "▸"; color: var(--blue); font-size: 11px; }
+  details.sec[open] > summary::before { content: "▾"; }
+  details.sec > summary:hover { color: var(--text); }
   .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
   table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); }
@@ -90,31 +98,45 @@
     <div class="card"><div class="k">Bot status</div><div class="v" id="botState">—</div><div class="s" id="botTxt">—</div></div>
   </div>
 
-  <h2>Open positions</h2>
-  <div class="panel" id="posPanel"><div class="empty">Loading…</div></div>
+  <details class="sec" open>
+    <summary>Open positions</summary>
+    <div class="panel" id="posPanel"><div class="empty">Loading…</div></div>
+  </details>
 
-  <h2>Armed trigger levels</h2>
-  <div class="panel" id="trigPanel"><div class="empty">Loading…</div></div>
+  <details class="sec" open>
+    <summary>Armed trigger levels</summary>
+    <div class="panel" id="trigPanel"><div class="empty">Loading…</div></div>
+  </details>
 
-  <h2>Trade history</h2>
-  <div class="panel" id="tradePanel"><div class="empty">Loading…</div></div>
+  <details class="sec" open>
+    <summary>Trade history</summary>
+    <div class="panel" id="tradePanel"><div class="empty">Loading…</div></div>
+  </details>
 
-  <h2>Latest AI decisions</h2>
-  <div class="panel"><div class="feed" id="feed"><div class="empty">Loading…</div></div></div>
+  <details class="sec" open>
+    <summary>Latest AI decisions</summary>
+    <div class="panel"><div class="feed" id="feed"><div class="empty">Loading…</div></div></div>
+  </details>
 
-  <h2>Shadow trades (declined by AI)</h2>
-  <div class="panel" id="shadowPanel"><div class="empty">Loading…</div></div>
+  <details class="sec" open>
+    <summary>Shadow trades (declined by AI)</summary>
+    <div class="panel" id="shadowPanel"><div class="empty">Loading…</div></div>
+  </details>
 
-  <h2>Rejected by guardrails</h2>
-  <div class="panel" id="blockedPanel"><div class="empty">Loading…</div></div>
+  <details class="sec" open>
+    <summary>Rejected by guardrails</summary>
+    <div class="panel" id="blockedPanel"><div class="empty">Loading…</div></div>
+  </details>
 
-  <details>
-    <summary>AI journal (the bot's thinking, newest last)</summary>
+  <details class="sec" open>
+    <summary>AI journal (newest last)</summary>
     <pre id="journal">Loading…</pre>
   </details>
 
-  <h2>Live news & economic calendar</h2>
-  <div class="panel" id="newsPanel"><div class="empty">Loading…</div></div>
+  <details class="sec" open>
+    <summary>Live news & economic calendar</summary>
+    <div class="panel" id="newsPanel"><div class="empty">Loading…</div></div>
+  </details>
 
   <div class="foot" id="foot"></div>
 </div>
