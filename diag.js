@@ -118,6 +118,10 @@
   console.log("  confidence card:", confTxt || "(empty)", "| trigger meters:", confMeters);
   if (!/^\d+$/.test(confTxt)) fail++;
   if (tKeysLen > 0 && confMeters === 0) fail++;
+  const trigConfs = [...tp.matchAll(/<div class="conf"[^>]*>[\s\S]*?<span>(\d+)<\/span>/g)].map(m => +m[1]);
+  const trigSorted = trigConfs.every((v, i) => i === 0 || trigConfs[i - 1] >= v);
+  console.log("  triggers conf-sorted high→low:", trigSorted, "| order:", trigConfs.join(","));
+  if (trigConfs.length > 1 && !trigSorted) fail++;
   const hEq = (els["hEquity"] && els["hEquity"]._t) || "";
   console.log("  sticky header equity:", hEq, "| today:", (els["hToday"] && els["hToday"]._t) || "?", "| cnt badges:", ["cntTrig", "cntShadow", "cntFeed", "cntNews"].map(id => (els[id] && els[id]._t) || "-").join(" "));
   if (!/\$[\d,]/.test(hEq)) fail++;

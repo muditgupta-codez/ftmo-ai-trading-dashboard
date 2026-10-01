@@ -334,6 +334,11 @@ async function refresh() {
     const confMeter = c => (c && typeof c.conf === "number")
       ? `<div class="conf" title="${esc((c.regime || "") + (c.approach ? " · " + c.approach : ""))}"><div class="cbar"><i style="width:${Math.max(0, Math.min(100, c.conf))}%;background:${confColor(c.conf)}"></i></div><span>${c.conf}</span></div>`
       : "";
+    tKeys.sort((a, b) => {
+      const ca = (confBySym[a] && typeof confBySym[a].conf === "number") ? confBySym[a].conf : -1;
+      const cb = (confBySym[b] && typeof confBySym[b].conf === "number") ? confBySym[b].conf : -1;
+      return cb - ca;
+    });
 
     const prices = d.prices || {};
     document.getElementById("trigPanel").innerHTML = tKeys.length ? `<table>
