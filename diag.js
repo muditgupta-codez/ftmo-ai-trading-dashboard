@@ -93,6 +93,10 @@
   const usdCount = (sp.match(/R \([+−]\$/g) || []).length;
   console.log("  shadow $ amounts shown:", usdCount, "(badges + open Now cells)");
   if (hasResolved && usdCount === 0) fail++;
+  console.log("  wide cells (plan/why/reason/event):", (sp.match(/class="wide"/g) || []).length, "in shadow |",
+    tp.includes('class="wide"') ? "trig ✓" : "trig ✗");
+  if (sp.match(/data-l="why" style/) && !sp.includes('class="wide" data-l="why"')) fail++;
+  if (tp.includes('max-width:340px') && !tp.includes('class="wide"')) fail++;
   console.log(useLocal ? "LOCAL GATE: " + (fail ? "FAIL (" + fail + ")" : "PASS") : "VERIFY DONE, failures: " + fail);
   process.exitCode = fail ? 1 : 0;
 })().catch(e => { console.log("HARNESS ERROR:", e.message); process.exitCode = 1; });

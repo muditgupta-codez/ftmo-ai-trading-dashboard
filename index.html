@@ -70,22 +70,32 @@
 
   /* ---- phone ---- */
   @media (max-width: 640px) {
-    .wrap { padding: 12px 10px 50px; }
+    .wrap { padding: 12px 10px 60px; }
+    body { font-size: 14px; }
     h1 { font-size: 16.5px; }
     h2 { margin: 16px 0 6px; }
+    .live { font-size: 12px; }
     .cards { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
     .card { padding: 11px 12px; }
-    .card .v { font-size: 19px; }
+    .card .v { font-size: 20px; }
+    details.sec { margin: 14px 0 4px; }
+    details.sec > summary { padding: 10px 2px; font-size: 12.5px; }  /* comfortable tap target */
     th { display: none; }
-    table td { display: inline-block; border-bottom: none; padding: 3px 8px 3px 0; font-size: 12.5px; }
-    table tr { display: block; padding: 8px 11px; border-bottom: 1px solid var(--line); }
+    table tr { display: block; padding: 9px 12px; border-bottom: 1px solid var(--line); }
     table tr:last-child { border-bottom: none; }
-    td::before { content: attr(data-l); color: var(--muted); font-size: 10px;
-                 text-transform: uppercase; letter-spacing: .05em; margin-right: 5px; }
-    td:first-child { display: block; margin-bottom: 3px; }
+    table td { display: inline-block; width: 50%; box-sizing: border-box; vertical-align: top;
+               border-bottom: none; padding: 5px 8px 5px 0; font-size: 13px;
+               overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+    td::before { content: attr(data-l); display: block; color: var(--muted); font-size: 9.5px;
+                 text-transform: uppercase; letter-spacing: .06em; margin: 0 0 2px; }
+    td:first-child { display: block; width: 100%; margin-bottom: 4px; font-size: 13.5px; }
     td:first-child::before { content: ""; margin: 0; }
+    td.wide { display: block; width: 100%; max-width: 100% !important; }  /* long text spans full row */
     .dec { padding: 10px 11px; }
-    .why { font-size: 12.5px; }
+    .dec .why { font-size: 13px; line-height: 1.5; }
+    .lvl { font-size: 11.5px; line-height: 1.5; }
+    .exitbtn { padding: 8px 18px; font-size: 12.5px; }  /* bigger tap target */
+    .pill { font-size: 10.5px; }
     .foot { margin-top: 18px; }
   }
 </style>
@@ -215,7 +225,7 @@ async function refresh() {
         const m = e.in_minutes;
         const dur = m >= 60 ? Math.floor(m/60) + "h" + String(m%60).padStart(2, "0") + "m" : m + "min";
         const impactCls = e.impact === "High" ? "neg" : "amber";
-        rows += '<tr><td data-l="in">' + dur + '</td><td data-l="">' + esc(e.country) + ' ' + esc(e.title) +
+        rows += '<tr><td data-l="in">' + dur + '</td><td class="wide" data-l="event">' + esc(e.country) + ' ' + esc(e.title) +
                 '</td><td data-l="impact" class="' + impactCls + '">' + esc(e.impact) + '</td></tr>';
       });
       newsHtml += '<table><tr><th>When</th><th>Event</th><th>Impact</th></tr>' + rows + '</table>';
@@ -276,7 +286,7 @@ async function refresh() {
         <td><b>${esc(s)}</b></td>
         <td data-sym="${esc(s)}" data-lvl="${lvl ?? ""}" data-side="${side}">${px != null ? `<span class="${c}">${px}</span>` : "—"}${dist}</td>
         <td data-l="long >">${t.long_above ?? "—"}</td><td data-l="short <">${t.short_below ?? "—"}</td><td data-l="exit <">${t.close_long_below ?? "—"}</td>
-        <td style="max-width:340px">${esc(t.note || "")}</td></tr>`; }).join("")}</table>`
+        <td class="wide" data-l="plan" style="max-width:340px">${esc(t.note || "")}</td></tr>`; }).join("")}</table>`
       : `<div class="empty">No levels armed.</div>`;
 
     const trades = (d.trades || []).slice().reverse();
@@ -436,7 +446,7 @@ function renderShadow(d) {
           '<td data-l="sl / tp">' + s.sl + ' / ' + s.tp + '</td>' +
           nowCell +
           '<td data-l="result">' + outcomeHtml + (s.managed_exit ? ' <span style="font-size:10px;color:var(--muted)">🔒 managed</span>' : '') + '</td>' +
-          '<td data-l="why" style="max-width:300px">' + esc(s.why_refused || s.strategy || "") + '</td></tr>';
+          '<td class="wide" data-l="why" style="max-width:300px">' + esc(s.why_refused || s.strategy || "") + '</td></tr>';
       }).join("") + '</table>'
     : '<div class="empty">No declined setups tracked yet.</div>');
 }
@@ -455,7 +465,7 @@ function renderBlocked(d) {
   document.getElementById("blockedPanel").innerHTML = blocked.length
     ? '<table>' + blocked.map(b => '<tr><td data-l="">' + esc((b.ts || "").replace("T", " ").slice(5, 16)) + '</td>' +
         '<td data-l=""><b>' + esc(b.dd.symbol) + '</b> ' + esc(b.dd.action) + ' (conf ' + esc(b.dd.confidence) + ')</td>' +
-        '<td data-l="reason" style="max-width:340px">' + esc(b.reason) + '</td></tr>').join("") + '</table>'
+        '<td class="wide" data-l="reason" style="max-width:340px">' + esc(b.reason) + '</td></tr>').join("") + '</table>'
     : '<div class="empty">Nothing blocked — every proposal passed the risk rules.</div>';
 }
 
@@ -596,6 +606,17 @@ function connectWS() {
 refresh();
 setInterval(refresh, 30000);
 connectWS();
+
+// sections remember their open/collapsed state (phone-friendly; guarded for odd browsers)
+try {
+  const store = window.localStorage;
+  document.querySelectorAll("details.sec").forEach(d0 => {
+    const key = "sec:" + d0.querySelector("summary").textContent.trim();
+    const saved = store.getItem(key);
+    if (saved !== null) d0.open = saved === "1";
+    d0.addEventListener("toggle", () => { try { store.setItem(key, d0.open ? "1" : "0"); } catch (e) {} });
+  });
+} catch (e) { /* no storage — defaults apply */ }
 </script>
 </body>
 </html>
