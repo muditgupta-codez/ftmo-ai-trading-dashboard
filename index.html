@@ -60,6 +60,9 @@
   pre { white-space: pre-wrap; background: var(--card); border: 1px solid var(--line);
         border-radius: 12px; padding: 13px; font-size: 12.5px; line-height: 1.5;
         font-family: ui-monospace, Consolas, monospace; max-height: 420px; overflow: auto; }
+  .bar { height: 8px; background: var(--line); border-radius: 6px; overflow: hidden; margin: 7px 0 5px; }
+  .bar > div { height: 100%; background: var(--green); border-radius: 6px; transition: width .4s; }
+  .bar > div.warn { background: var(--amber); }
   .foot { margin-top: 26px; text-align: center; color: var(--muted); font-size: 11.5px; }
 
   /* ---- phone ---- */
@@ -97,6 +100,11 @@
     <div class="card"><div class="k">Open positions</div><div class="v" id="posCount">—</div><div class="s" id="posTxt">—</div></div>
     <div class="card"><div class="k">Bot status</div><div class="v" id="botState">—</div><div class="s" id="botTxt">—</div></div>
   </div>
+
+  <details class="sec" open>
+    <summary>FTMO objectives</summary>
+    <div class="panel" id="objPanel"><div class="empty">Loading…</div></div>
+  </details>
 
   <details class="sec" open>
     <summary>Open positions</summary>
@@ -246,6 +254,7 @@ async function refresh() {
     const tKeys = Object.keys(trig);
     renderShadow(d);
     renderBlocked(d);
+    renderObjectives(d);
 
     const prices = d.prices || {};
     document.getElementById("trigPanel").innerHTML = tKeys.length ? `<table>
@@ -292,11 +301,68 @@ function statusBadge(s) {
   return '<span class="badge" style="background:var(--line);color:var(--muted)">' + esc(s || "—") + '</span>';
 }
 
+function computeSim(d) {
+  const all = d.shadow || [];
+  let sim = 10000, wins = 0, losses = 0, open = 0;
+  all.forEach(s => {
+    if (s.status === "resolved" && typeof s.r_multiple === "number") {
+      sim += s.r_multiple * 50;
+      if (s.result === "win") wins++; else if (s.result === "loss") losses++;
+    } else if (s.status === "open") open++;
+  });
+  return { sim, pl: sim - 10000, wins, losses, open };
+}
+
+function ftmoBlock(name, equity, initial, dailyUsedPct, isShadow) {
+  const TARGET = 0.10, MAXLOSS = 0.10, DAILY = 0.05;
+  const prog = Math.max(0, Math.min(100, (equity - initial) / (initial * TARGET) * 100));
+  const floor = initial * (1 - MAXLOSS);
+  const buf = equity - floor;
+  const daily = dailyUsedPct == null ? null : Math.max(0, Math.min(100, dailyUsedPct));
+  return `<div style="padding:11px 13px;border-bottom:1px solid var(--line)">
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;align-items:baseline">
+      <b>${esc(name)}</b>
+      <span class="${prog >= 100 ? "pos" : "muted"}" style="font-size:12px">${prog >= 100 ? "TARGET REACHED 🎉" : "target progress " + prog.toFixed(1)}%</span>
+    </div>
+    <div class="bar"><div style="width:${prog}%"></div></div>
+    <div class="lvl" style="margin-top:4px">Equity $${fmt(equity)} · profit target $${fmt(initial * (1 + TARGET))} (+10%)
+    · loss floor $${fmt(floor)} (−10%) · buffer <span class="${buf >= 0 ? "pos" : "neg"}">${buf >= 0 ? "+" : ""}$${fmt(buf)}</span>${daily != null ? " · daily-loss used " + daily.toFixed(0) + "% of −5%" : ""}</div>
+  </div>`;
+}
+
+function renderObjectives(d) {
+  const sim = computeSim(d);
+  const acc = d.account || {};
+  const rInit = acc.initial_balance || 10000;
+  const rEq = acc.equity != null ? acc.equity : rInit;
+  let rDaily = null;
+  if (acc.day_start_balance) {
+    rDaily = Math.max(0, (acc.day_start_balance - rEq) / (acc.day_start_balance * 0.05) * 100);
+  }
+  const sInit = 10000;
+  const sEq = sim.sim;
+  const sProg = Math.max(0, Math.min(100, sim.pl / (sInit * 0.10) * 100));
+  document.getElementById("objPanel").innerHTML =
+    ftmoBlock("Real account — FTMO Free Trial 2-Step", rEq, rInit, rDaily) +
+    ftmoBlock("Shadow account (simulated)", sEq, sInit, null);
+}
+
 function renderShadow(d) {
+  const RISK = 50;  // $ per 1R — matches 0.5% of the $10k account
+  const all = (d.shadow || []).slice().reverse();
+  const S = computeSim(d);
+  const sim = S.sim, wins = S.wins, losses = S.losses, open = S.open;
+  const pl = S.pl;
   const cutoff = Date.now() / 1000 - 24 * 3600;
-  const shadows = (d.shadow || []).filter(s => (s.ts || 0) >= cutoff).slice().reverse();
-  document.getElementById("shadowPanel").innerHTML = shadows.length
-    ? '<table><tr><th>When</th><th>Setup</th><th>Entry</th><th>SL / TP</th><th>Outcome</th><th>Note</th></tr>' +
+  const shadows = all.filter(s => (s.ts || 0) >= cutoff);
+  const strip = `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:baseline;padding:10px 13px;border-bottom:1px solid var(--line);background:rgba(76,141,255,.06)">
+    <span style="font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Simulated shadow account</span>
+    <span style="font-size:16px;font-weight:700">$${fmt(sim)}</span>
+    <span class="${pl >= 0 ? "pos" : "neg"}" style="font-weight:700">${pl >= 0 ? "+" : "−"}$${fmt(Math.abs(pl))}</span>
+    <span style="color:var(--muted);font-size:12px">record ${wins}W–${losses}L · ${open} tracking · $${RISK} per 1R · started $10,000</span>
+  </div>`;
+  document.getElementById("shadowPanel").innerHTML = strip + (shadows.length ?
+    '<table><tr><th>When</th><th>Setup</th><th>Entry</th><th>SL / TP</th><th>Outcome</th><th>Note</th></tr>' +
       shadows.map(s => {
         const r = s.status === "resolved" ? (s.result === "win" ? "WIN " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R"
                  : "LOSS " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R") : s.status;
@@ -307,7 +373,7 @@ function renderShadow(d) {
           '<td data-l="result">' + statusBadge(r) + '</td>' +
           '<td data-l="why" style="max-width:300px">' + esc(s.why_refused || s.strategy || "") + '</td></tr>';
       }).join("") + '</table>'
-    : '<div class="empty">No declined setups tracked yet.</div>';
+    : '<div class="empty">No declined setups tracked yet.</div>');
 }
 
 function renderBlocked(d) {
