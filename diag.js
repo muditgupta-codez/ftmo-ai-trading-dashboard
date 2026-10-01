@@ -58,17 +58,15 @@
   const hasToday = sp.includes("today +$") || sp.includes("today −$") || sp.includes("today -$");
   console.log("  shadow strip daily P/L shown:", hasToday, "| server account:", !!(d.shadow_account && d.shadow_account.balance));
   const objHtml = (els["objPanel"] && els["objPanel"]._h) || "";
-  const shadowObj = objHtml.split("Shadow account")[1] || "";
   const mbarCount = (objHtml.match(/class="mbar"/g) || []).length;
   const objMetrics = objHtml.includes("Phase 1 target · +6%") && objHtml.includes("Max loss") && objHtml.includes("Daily loss") && objHtml.includes("Floating cap");
   console.log("  objectives: per-metric bars:", mbarCount, "| all metric rows:", objMetrics,
-    "| shadow daily usage:", shadowObj.includes("Daily loss"));
-  if (mbarCount < 12 || !objMetrics) fail++;
+    "| blocks:", (objHtml.match(/FTMO trial/g) || []).length, "ftmo +", (objHtml.match(/XM mirror/g) || []).length, "xm");
+  if (mbarCount < 8 || !objMetrics) fail++;
   const oldDaily = objHtml.includes("daily-loss used");
   console.log("  objectives: old text layout gone:", !oldDaily);
   if (oldDaily) fail++;
   if (d.shadow_account && d.shadow_account.balance && !hasToday) fail++;
-  if (d.shadow_account && d.shadow_account.balance && !shadowObj.includes("Daily loss")) fail++;
   console.log("  exit plumbing in script:", script.includes("/api/command") && script.includes("manualExit"));
   if (!(script.includes("/api/command") && script.includes("manualExit"))) fail++;
 

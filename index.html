@@ -544,7 +544,6 @@ function metricsBlock(name, equity, initial, dayStart, daily, dailyUsd, extrasHt
 }
 
 function renderObjectives(d) {
-  const sim = computeSim(d);
   const acc = d.account || {};
   const rInit = acc.initial_balance || 10000;
   const rEq = acc.equity != null ? acc.equity : rInit;
@@ -555,13 +554,6 @@ function renderObjectives(d) {
     const lowsToday = (typeof lows.day_low === "number") ? Math.min(lows.day_low, rEq) : rEq;
     rDaily = Math.max(0, (acc.day_start_balance - lowsToday) / (acc.day_start_balance * 0.03) * 100);
     rDailyUsd = { used: Math.max(0, acc.day_start_balance - lowsToday), limit: acc.day_start_balance * 0.03 };
-  }
-  const sEq = sim.sim;
-  let sDaily = null, sDailyUsd = null;
-  if (sim.dayStart) {
-    const worstSim = (typeof sim.dayLow === "number") ? Math.min(sim.dayLow, sEq) : sEq;
-    sDaily = Math.max(0, (sim.dayStart - worstSim) / (sim.dayStart * 0.03) * 100);
-    sDailyUsd = { used: Math.max(0, sim.dayStart - worstSim), limit: sim.dayStart * 0.03 };
   }
   // XM mirror account (Shark test)
   const xm = d.xm_account || {};
@@ -600,8 +592,7 @@ function renderObjectives(d) {
   if (parts.length) extraHtml = `<div class="lvl" style="margin-top:3px">${parts.join(" · ")}</div>`;
   document.getElementById("objPanel").innerHTML = sharkMark +
     metricsBlock("FTMO trial — 🦈 Shark rules test", rEq, rInit, acc.day_start_balance, rDaily, rDailyUsd, extraHtml, { target_pct: 6, floatPl: floatPl }) +
-    (xmBlock || "") +
-    metricsBlock("Shadow account (simulated)", sEq, 10000, sim.dayStart, sDaily, sDailyUsd, "", { target_pct: 6, floatPl: null });
+    (xmBlock || "");  // XM mirror IS the shadow ledger now (real fills) — no separate simulated block
 }
 
 function renderShadow(d) {
