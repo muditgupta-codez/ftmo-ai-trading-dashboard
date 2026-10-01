@@ -362,14 +362,30 @@ function renderShadow(d) {
     <span style="color:var(--muted);font-size:12px">record ${wins}W–${losses}L · ${open} tracking · $${RISK} per 1R · started $10,000</span>
   </div>`;
   document.getElementById("shadowPanel").innerHTML = strip + (shadows.length ?
-    '<table><tr><th>When</th><th>Setup</th><th>Entry</th><th>SL / TP</th><th>Outcome</th><th>Note</th></tr>' +
+    '<table><tr><th>When</th><th>Setup</th><th>Entry</th><th>SL / TP</th><th>Now</th><th>Outcome</th><th>Note</th></tr>' +
       shadows.map(s => {
         const r = s.status === "resolved" ? (s.result === "win" ? "WIN " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R"
                  : "LOSS " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R") : s.status;
+        const px = (d.prices || {})[s.symbol];
+        const risk = Math.abs(s.entry - s.sl) || null;
+        let nowCell;
+        if (s.status === "open" && px != null) {
+          let ur = "";
+          if (risk) {
+            const r2 = s.action === "buy" ? (px - s.entry) / risk : (s.entry - px) / risk;
+            ur = '<div class="lvl">' + (r2 >= 0 ? "+" : "") + r2.toFixed(2) + 'R</div>';
+          }
+          nowCell = '<td data-ssym="' + esc(s.symbol) + '" data-entry="' + s.entry + '" data-sl="' + s.sl + '" data-act="' + esc(s.action) + '" data-l="now">' + px + ur + '</td>';
+        } else if (s.status === "resolved") {
+          nowCell = '<td data-l="exit">' + (s.exit ?? "—") + '</td>';
+        } else {
+          nowCell = '<td>—</td>';
+        }
         return '<tr><td data-l="">' + esc((s.ts_str || "").replace("T", " ").slice(5, 16)) + '</td>' +
           '<td data-l=""><b>' + esc(s.symbol) + '</b> ' + esc(s.action) + '</td>' +
           '<td data-l="entry">' + s.entry + '</td>' +
           '<td data-l="sl / tp">' + s.sl + ' / ' + s.tp + '</td>' +
+          nowCell +
           '<td data-l="result">' + statusBadge(r) + (s.managed_exit ? ' <span style="font-size:10px;color:var(--muted)">🔒 managed</span>' : '') + '</td>' +
           '<td data-l="why" style="max-width:300px">' + esc(s.why_refused || s.strategy || "") + '</td></tr>';
       }).join("") + '</table>'
@@ -426,6 +442,21 @@ function applyTick(tick) {
     }
   }
   if (tick.positions) renderPositions(tick.positions);
+  document.querySelectorAll("#shadowPanel td[data-ssym]").forEach(td => {
+    const sym = td.getAttribute("data-ssym");
+    const px = tick.prices ? tick.prices[sym] : null;
+    if (px == null) return;
+    const entry = parseFloat(td.getAttribute("data-entry"));
+    const sl = parseFloat(td.getAttribute("data-sl"));
+    const act = td.getAttribute("data-act");
+    const risk = Math.abs(entry - sl);
+    let ur = "";
+    if (risk) {
+      const r2 = act === "buy" ? (px - entry) / risk : (entry - px) / risk;
+      ur = '<div class="lvl">' + (r2 >= 0 ? "+" : "") + r2.toFixed(2) + 'R</div>';
+    }
+    td.innerHTML = px + ur;
+  });
   document.querySelectorAll("#trigPanel td[data-sym]").forEach(td => {
     const sym = td.getAttribute("data-sym");
     const px = tick.prices ? tick.prices[sym] : null;
