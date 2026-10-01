@@ -326,21 +326,30 @@ function computeSim(d) {
   return { sim, pl: sim - 10000, wins, losses, open };
 }
 
-function ftmoBlock(name, equity, initial, dailyUsedPct, targetPct, note) {
-  const TARGET = targetPct || 0.05, MAXLOSS = 0.10, DAILY = 0.05;  // Free Trial 2-Step: Step1 +5%, Step2 +2.5% (FTMO halves 10%/5%); paid Challenge = 0.10/0.05
-  const prog = Math.max(0, Math.min(100, (equity - initial) / (initial * TARGET) * 100));
-  const floor = initial * (1 - MAXLOSS);
+function twoStepBlock(name, equity, initial, dailyUsedPct, footnote) {
+  const S1 = initial * 1.10, S2 = S1 * 1.05;  // FTMO standard 2-Step: +10% then +5%, cumulative
+  const total = S2 - initial;
+  const bar = Math.max(0, Math.min(100, (equity - initial) / total * 100));
+  const s1Mark = (S1 - initial) / total * 100;  // amber divider = Step 1 milestone
+  const s1Prog = Math.max(0, (equity - initial) / (S1 - initial) * 100);
+  const s2Prog = Math.max(0, (equity - S1) / (S2 - S1) * 100);
+  const st = (done, prog, locked) => done ? '<span class="pos" style="font-weight:700">DONE 🎉</span>'
+    : locked ? '<span style="color:var(--muted)">locked</span>'
+    : '<span style="color:var(--muted)">' + prog.toFixed(0) + '%</span>';
+  const floor = initial * 0.90;
   const buf = equity - floor;
   const daily = dailyUsedPct == null ? null : Math.max(0, Math.min(100, dailyUsedPct));
-  const tpct = (TARGET * 100 % 1) ? (TARGET * 100).toFixed(1) : String(TARGET * 100);
   return `<div style="padding:11px 13px;border-bottom:1px solid var(--line)">
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;align-items:baseline">
       <b>${esc(name)}</b>
-      <span class="${note ? "muted" : (prog >= 100 ? "pos" : "muted")}" style="font-size:12px">${note || (prog >= 100 ? "TARGET REACHED 🎉" : "target progress " + prog.toFixed(1) + "%")}</span>
+      <span style="font-size:12px;color:var(--muted)">journey +${((S2 / initial - 1) * 100).toFixed(0)}% → $${fmt(S2)} · bar ${bar.toFixed(1)}%</span>
     </div>
-    <div class="bar"><div style="width:${prog}%"></div></div>
-    <div class="lvl" style="margin-top:4px">Equity $${fmt(equity)} · profit target $${fmt(initial * (1 + TARGET))} (+${tpct}%)
-    · loss floor $${fmt(floor)} (−10%) · buffer <span class="${buf >= 0 ? "pos" : "neg"}">${buf >= 0 ? "+" : ""}$${fmt(buf)}</span>${daily != null ? " · daily-loss used " + daily.toFixed(0) + "% of −5%" : ""}</div>
+    <div class="bar" style="position:relative"><div style="width:${bar}%"></div>
+      <div style="position:absolute;left:${s1Mark}%;top:0;bottom:0;width:2px;background:var(--amber)"></div></div>
+    <div class="lvl" style="margin-top:5px">Step 1 · +10% → $${fmt(S1)} ${st(equity >= S1, s1Prog, false)}
+    &nbsp;·&nbsp; Step 2 · +5% → $${fmt(S2)} ${st(equity >= S2, s2Prog, equity < S1)}</div>
+    <div class="lvl" style="margin-top:4px">Equity $${fmt(equity)} · loss floor $${fmt(floor)} (−10%) · buffer <span class="${buf >= 0 ? "pos" : "neg"}">${buf >= 0 ? "+" : ""}$${fmt(buf)}</span>${daily != null ? " · daily-loss used " + daily.toFixed(0) + "% of −5%" : ""}</div>
+    ${footnote ? `<div class="lvl" style="margin-top:3px;color:var(--muted)">${footnote}</div>` : ""}
   </div>`;
 }
 
@@ -360,12 +369,10 @@ function renderObjectives(d) {
   if (sim.dayStart) {
     sDaily = Math.max(0, (sim.dayStart - sEq) / (sim.dayStart * 0.05) * 100);
   }
-  const step1Target = rInit * 1.05;  // Free Trial halves the 2-Step targets: 10%→5%, 5%→2.5%
   document.getElementById("objPanel").innerHTML =
-    ftmoBlock("Real account · Step 1 of 2 (Free Trial)", rEq, rInit, rDaily, 0.05) +
-    ftmoBlock("Real account · Step 2 Verification", rEq, step1Target, rDaily, 0.025,
-              rEq >= step1Target ? null : "locked — finish Step 1 first") +
-    ftmoBlock("Shadow account (simulated)", sEq, sInit, sDaily, 0.05);
+    twoStepBlock("Real account — FTMO standard 2-Step", rEq, rInit, rDaily,
+                 "FTMO passes the Free Trial itself at +5% ($10,500) — this bar shows the standard Challenge journey (+10%, then +5%).") +
+    twoStepBlock("Shadow account (simulated)", sEq, 10000, sDaily);
 }
 
 function renderShadow(d) {

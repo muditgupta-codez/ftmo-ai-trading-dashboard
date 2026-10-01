@@ -60,6 +60,9 @@
   const objHtml = (els["objPanel"] && els["objPanel"]._h) || "";
   const shadowObj = objHtml.split("Shadow account")[1] || "";
   console.log("  objectives: shadow daily-loss usage shown:", shadowObj.includes("daily-loss used"));
+  const twoStep = objHtml.includes("Step 1 · +10%") && objHtml.includes("Step 2 · +5%");
+  console.log("  objectives: standard 2-Step blocks (both accounts):", twoStep);
+  if (!twoStep) fail++;
   if (d.shadow_account && d.shadow_account.balance && !hasToday) fail++;
   if (d.shadow_account && d.shadow_account.balance && !shadowObj.includes("daily-loss used")) fail++;
   console.log("  exit plumbing in script:", script.includes("/api/command") && script.includes("manualExit"));
