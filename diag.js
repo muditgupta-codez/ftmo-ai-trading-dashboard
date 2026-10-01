@@ -32,7 +32,7 @@
   if (r1.err) { console.log("SYNC ERROR:", r1.err); fail++; }
   const els = r1.els;
   console.log("--- rendered sections after refresh ---");
-  ["objPanel", "posPanel", "trigPanel", "tradePanel", "feed", "shadowPanel", "blockedPanel", "newsPanel"].forEach(k => {
+  ["objPanel", "posPanel", "trigPanel", "tradePanel", "feed", "shadowPanel", "blockedPanel", "newsPanel", "sessPanel"].forEach(k => {
     const ok = els[k] && els[k]._h !== undefined && els[k]._h.length > 0;
     if (!ok) fail++;
     console.log(" ", k, "| html set:", ok, "| len:", ((els[k] && els[k]._h) || "").length);
@@ -122,6 +122,10 @@
   const trigSorted = trigConfs.every((v, i) => i === 0 || trigConfs[i - 1] >= v);
   console.log("  triggers conf-sorted high→low:", trigSorted, "| order:", trigConfs.join(","));
   if (trigConfs.length > 1 && !trigSorted) fail++;
+  const sessHtml = (els["sessPanel"] && els["sessPanel"]._h) || "";
+  console.log("  sessions panel: names:", ["London", "New York"].every(n => sessHtml.includes(n)),
+    "| productivity table:", sessHtml.includes("Most productive"), "| cnt:", (els["cntSess"] && els["cntSess"]._t) || "-");
+  if (!sessHtml.includes("London") || !sessHtml.includes("New York")) fail++;
   const hEq = (els["hEquity"] && els["hEquity"]._t) || "";
   console.log("  sticky header equity:", hEq, "| today:", (els["hToday"] && els["hToday"]._t) || "?", "| cnt badges:", ["cntTrig", "cntShadow", "cntFeed", "cntNews"].map(id => (els[id] && els[id]._t) || "-").join(" "));
   if (!/\$[\d,]/.test(hEq)) fail++;

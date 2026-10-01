@@ -164,6 +164,11 @@
   </details>
 
   <details class="sec" open>
+    <summary><i class="sdot" style="background:var(--blue)"></i>Trading sessions<span class="cnt" id="cntSess"></span></summary>
+    <div class="panel" id="sessPanel"><div class="empty">Loading…</div></div>
+  </details>
+
+  <details class="sec" open>
     <summary><i class="sdot" style="background:var(--amber)"></i>Shadow trades (declined by AI)<span class="cnt" id="cntShadow"></span></summary>
     <div class="panel" id="shadowPanel"><div class="empty">Loading…</div></div>
   </details>
@@ -214,6 +219,71 @@ const ago = ts => {
 };
 const esc = t => (t ?? "").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const setCnt = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n > 0 ? n : ""; };
+
+// FX sessions in UTC hours (summer ranges; close enough for context)
+const SESSIONS = [
+  { name: "Sydney", s: 21, e: 6 },
+  { name: "Tokyo", s: 0, e: 9 },
+  { name: "London", s: 7, e: 16 },
+  { name: "New York", s: 12, e: 21 },
+];
+const inSess = (h, s) => s.s < s.e ? (h >= s.s && h < s.e) : (h >= s.s || h < s.e);
+const sessionOf = d => {
+  const h = d.getUTCHours() + d.getUTCMinutes() / 60;
+  const L = inSess(h, SESSIONS[2]), N = inSess(h, SESSIONS[3]);
+  if (L && N) return "London·NY";
+  if (N) return "New York";
+  if (L) return "London";
+  if (inSess(h, SESSIONS[1])) return "Tokyo";
+  if (inSess(h, SESSIONS[0])) return "Sydney";
+  return "off-hours";
+};
+const fxOpen = d => { const u = d.getUTCDay(); return u >= 1 && u <= 4 ? true : (u === 5 ? d.getUTCHours() < 21 : (u === 6 ? false : d.getUTCHours() >= 21)); };
+
+function renderSessions(d) {
+  const now = new Date();
+  const active = SESSIONS.filter(s => inSess(now.getUTCHours() + now.getUTCMinutes() / 60, s));
+  const overlap = active.some(s => s.name === "London") && active.some(s => s.name === "New York");
+  const open = fxOpen(now);
+  setCnt("cntSess", 0);
+  document.getElementById("cntSess").textContent = active.map(s => s.name.slice(0, 3).toUpperCase()).join("·");
+
+  // productivity: bucket shadow resolutions by the session they resolved in
+  const bySess = {};
+  (d.shadow || []).forEach(s => {
+    if (s.status !== "resolved" || typeof s.r_multiple !== "number") return;
+    const t = new Date(((s.resolved_ts_str ? Date.parse(s.resolved_ts_str) : (s.resolved_ts ? s.resolved_ts * 1000 : 0)) || 0));
+    if (!t.getTime()) return;
+    const k = sessionOf(t);
+    const b = bySess[k] = bySess[k] || { n: 0, w: 0, l: 0, r: 0 };
+    b.n++; if (s.result === "win") b.w++; else if (s.result === "loss") b.l++;
+    b.r += s.r_multiple;
+  });
+  const rows = Object.entries(bySess).sort((a, b) => b[1].r - a[1].r);
+  const best = rows.length ? rows[0] : null;
+  let prod = rows.length ? "<table>" : "";
+  rows.forEach(([name, b]) => {
+    const isBest = best && name === best[0] && b.r > 0;
+    prod += `<tr><td data-l="session">${isBest ? "🏆 " : ""}<b>${esc(name)}</b>${name === "London·NY" ? ' <span style="color:var(--amber);font-size:10.5px">overlap</span>' : ""}</td>` +
+      `<td data-l="record">${b.w}W–${b.l}L</td><td data-l="net r" class="${cls(b.r)}"><b>${b.r >= 0 ? "+" : ""}${b.r.toFixed(2)}R</b></td>` +
+      `<td data-l="resolved">${b.n}</td></tr>`;
+  });
+  if (rows.length) prod += "</table>";
+
+  const activeHtml = active.map(s => `<span class="pill" style="color:var(--text)">${s.name}</span>`).join(" ") || `<span class="pill">FX sessions closed</span>`;
+  const allSess = SESSIONS.map(s => {
+    const on = active.some(a => a.name === s.name);
+    return `<span style="color:${on ? "var(--text)" : "var(--muted)"}">${on ? "●" : "○"} ${s.name}</span>`;
+  }).join(" · ");
+  const overlapTxt = overlap ? ` · <span class="pos" style="font-weight:700">London·NY overlap — peak liquidity window</span>` : "";
+  const fxTxt = open ? "FX open" : (now.getUTCDay() === 6 || (now.getUTCDay() === 0 && now.getUTCHours() < 21) ? "weekend — crypto only" : "FX closed");
+  const nextEv = ((d.news || {}).events || []).filter(e => e.in_minutes >= 0 && e.impact === "High")[0];
+  const evTxt = nextEv ? ` · next red event: ${esc(nextEv.country)} ${esc(nextEv.title)} in ${nextEv.in_minutes >= 60 ? Math.floor(nextEv.in_minutes / 60) + "h" + String(nextEv.in_minutes % 60).padStart(2, "0") + "m" : nextEv.in_minutes + "m"}` : "";
+  document.getElementById("sessPanel").innerHTML =
+    `<div style="padding:10px 13px;font-size:13.5px;line-height:1.7">Active now: ${activeHtml} <span style="color:var(--muted)">(${fxTxt})</span>${overlapTxt}${evTxt}<div style="margin-top:4px">${allSess}</div></div>` +
+    (rows.length ? prod + `<div class="lvl" style="padding:0 13px 10px">Most productive session marked 🏆 — early data: ${rows.reduce((a, r) => a + r[1].n, 0)} shadow resolutions. Live book (2 trades) too small to rank yet.</div>`
+      : `<div class="empty">No resolved outcomes yet to rank sessions.</div>`);
+}
 
 function badge(action, rejected) {
   if (rejected) return `<span class="badge b-rej">REJECTED</span>`;
@@ -305,6 +375,7 @@ async function refresh() {
     const trig = (d.triggers && d.triggers.triggers) || {};
     const tKeys = Object.keys(trig);
     setCnt("cntTrig", tKeys.length);
+    renderSessions(d);
     renderShadow(d);
     renderBlocked(d);
     renderObjectives(d);
