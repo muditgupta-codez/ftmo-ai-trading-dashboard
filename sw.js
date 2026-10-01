@@ -4,7 +4,8 @@ self.addEventListener("push", (e) => {
   e.waitUntil(self.registration.showNotification(d.title || "FTMO AI Bot", {
     body: d.body || "",
     tag: d.tag || "ftmo-bot",
-    silent: false,          // play the system notification sound
+    silent: !!d.silent,     // live position updates replace in place, no sound
+    sound: d.critical ? "default" : undefined,
     requireInteraction: !!d.critical,  // stays on screen (desktop)
     icon: "/icon-192.png",
     badge: "/icon-192.png",
