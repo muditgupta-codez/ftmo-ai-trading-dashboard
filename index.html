@@ -582,11 +582,12 @@ function renderShadow(d) {
     '<table><tr><th>Setup</th><th>Entry</th><th>SL / TP</th><th>Now</th><th>Outcome</th><th>Note</th></tr>' +
       shadows.map(s => {
         const usd = rm => (rm >= 0 ? "+$" : "−$") + fmt(Math.abs(rm * RISK));
-        const r = s.status === "resolved" ? (s.result === "win" ? "WIN " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R (" + usd(s.r_multiple) + ")"
-                 : "LOSS " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R (" + usd(s.r_multiple) + ")") : s.status;
+        const r = s.status === "resolved" ? (s.result === "be" ? "BE 0.00R"
+                 : (s.result === "win" ? "WIN " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R (" + usd(s.r_multiple) + ")"
+                 : "LOSS " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R (" + usd(s.r_multiple) + ")")) : s.status;
         let outcomeHtml;
         if (s.status === "resolved") {
-          outcomeHtml = '<span class="badge ' + (s.result === "win" ? "b-buy" : "b-rej") + '">' + r + '</span>';
+          outcomeHtml = '<span class="badge ' + (s.result === "win" ? "b-buy" : s.result === "be" ? "b-close" : "b-rej") + '">' + r + '</span>';
         } else if (s.status === "open") {
           outcomeHtml = '<span class="badge b-close">OPEN</span>';
         } else {
