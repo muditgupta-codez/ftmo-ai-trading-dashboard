@@ -336,7 +336,7 @@ function computeSim(d) {
   return { sim, pl: sim - 10000, wins, losses, open };
 }
 
-function twoStepBlock(name, equity, initial, dailyUsedPct, footnote) {
+function twoStepBlock(name, equity, initial, dailyUsedPct, footnote, dailyUsd) {
   const S1 = initial * 1.10, S2 = S1 * 1.05;  // FTMO standard 2-Step: +10% then +5%, cumulative
   const total = S2 - initial;
   const bar = Math.max(0, Math.min(100, (equity - initial) / total * 100));
@@ -358,7 +358,7 @@ function twoStepBlock(name, equity, initial, dailyUsedPct, footnote) {
       <div style="position:absolute;left:${s1Mark}%;top:0;bottom:0;width:2px;background:var(--amber)"></div></div>
     <div class="lvl" style="margin-top:5px">Step 1 · +10% → $${fmt(S1)} · ${st(equity >= S1, s1Prog, false)}
     &nbsp;·&nbsp; Step 2 · +5% → $${fmt(S2)} · ${st(equity >= S2, s2Prog, equity < S1)}</div>
-    <div class="lvl" style="margin-top:4px">Equity $${fmt(equity)} · loss floor $${fmt(floor)} (−10%) · buffer <span class="${buf >= 0 ? "pos" : "neg"}">${buf >= 0 ? "+" : ""}$${fmt(buf)}</span>${daily != null ? " · daily-loss used " + daily.toFixed(0) + "% of −5%" : ""}</div>
+    <div class="lvl" style="margin-top:4px">Equity $${fmt(equity)} · loss floor $${fmt(floor)} (−10%) · buffer <span class="${buf >= 0 ? "pos" : "neg"}">${buf >= 0 ? "+" : ""}$${fmt(buf)}</span>${daily != null ? " · daily-loss used " + daily.toFixed(0) + "% of −5% (<span class=\"" + (dailyUsd && dailyUsd.used > 0 ? "neg" : "pos") + "\">−$" + fmt(dailyUsd ? dailyUsd.used : 0) + "</span> of −$" + fmt(dailyUsd ? dailyUsd.limit : initial * 0.05) + ")" : ""}</div>
     ${footnote ? `<div class="lvl" style="margin-top:3px;color:var(--muted)">${footnote}</div>` : ""}
   </div>`;
 }
@@ -368,21 +368,23 @@ function renderObjectives(d) {
   const acc = d.account || {};
   const rInit = acc.initial_balance || 10000;
   const rEq = acc.equity != null ? acc.equity : rInit;
-  let rDaily = null;
+  let rDaily = null, rDailyUsd = null;
   if (acc.day_start_balance) {
     rDaily = Math.max(0, (acc.day_start_balance - rEq) / (acc.day_start_balance * 0.05) * 100);
+    rDailyUsd = { used: Math.max(0, acc.day_start_balance - rEq), limit: acc.day_start_balance * 0.05 };
   }
   const sInit = 10000;
   const sEq = sim.sim;
   const sProg = Math.max(0, Math.min(100, sim.pl / (sInit * 0.10) * 100));
-  let sDaily = null;
+  let sDaily = null, sDailyUsd = null;
   if (sim.dayStart) {
     sDaily = Math.max(0, (sim.dayStart - sEq) / (sim.dayStart * 0.05) * 100);
+    sDailyUsd = { used: Math.max(0, sim.dayStart - sEq), limit: sim.dayStart * 0.05 };
   }
   document.getElementById("objPanel").innerHTML =
     twoStepBlock("Real account — FTMO standard 2-Step", rEq, rInit, rDaily,
-                 "FTMO passes the Free Trial itself at +5% ($10,500) — this bar shows the standard Challenge journey (+10%, then +5%).") +
-    twoStepBlock("Shadow account (simulated)", sEq, 10000, sDaily);
+                 "FTMO passes the Free Trial itself at +5% ($10,500) — this bar shows the standard Challenge journey (+10%, then +5%).", rDailyUsd) +
+    twoStepBlock("Shadow account (simulated)", sEq, 10000, sDaily, null, sDailyUsd);
 }
 
 function renderShadow(d) {
