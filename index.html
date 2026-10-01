@@ -819,9 +819,12 @@ function urlB64ToUint8(b64) {
   return Uint8Array.from(raw, c => c.charCodeAt(0));
 }
 const pushBtn = document.getElementById("pushBtn");
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-const isStandalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+let isIOS = false, isStandalone = false;
+try {
+  isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  isStandalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+} catch (e) { /* no navigator in test harness */ }
 function pushBtnState(txt) {
   if (pushBtn) { pushBtn.textContent = txt; pushBtn.style.display = "inline-block"; }
 }
