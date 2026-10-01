@@ -499,10 +499,11 @@ function metricsBlock(name, equity, initial, dayStart, daily, dailyUsd, extrasHt
   opts = opts || {};
   const tgt = opts.target_pct || 10;
   const floatPl = opts.floatPl != null ? opts.floatPl : null;
-  const floatCap = opts.floatCap || 1.0;
+  const floatCap = opts.floatCap || 10.0;
+  const maxDD = opts.max_dd_pct || 10;
   const S1 = initial * (1 + tgt / 100);          // phase 1 target
   const S2 = opts.showStep2 ? S1 * 1.05 : null;  // FTMO 2-Step phase 2 (+5%)
-  const floor = initial * 0.90;
+  const floor = initial * (1 - maxDD / 100);
   const pc = v => Math.max(0, Math.min(100, v));
   const t1 = pc((equity - initial) / (S1 - initial) * 100);
   const t2 = S2 ? pc((equity - S1) / (S2 - S1) * 100) : 0;
@@ -548,12 +549,15 @@ function renderObjectives(d) {
   const rInit = acc.initial_balance || 10000;
   const rEq = acc.equity != null ? acc.equity : rInit;
   const lows = d.equity_lows || {};
+  const basis = 5000;   // FTMO trades with $5k sizing during the shark test
+  const vOff = rInit - basis;
   let rDaily = null, rDailyUsd = null;
   if (acc.day_start_balance) {
-    // SharkFunded test: 3% daily, measured at the day's LOWEST equity point
+    // SharkFunded test: 3% daily ($150 on $5k), at the day's LOWEST equity point
     const lowsToday = (typeof lows.day_low === "number") ? Math.min(lows.day_low, rEq) : rEq;
-    rDaily = Math.max(0, (acc.day_start_balance - lowsToday) / (acc.day_start_balance * 0.03) * 100);
-    rDailyUsd = { used: Math.max(0, acc.day_start_balance - lowsToday), limit: acc.day_start_balance * 0.03 };
+    const used = Math.max(0, acc.day_start_balance - lowsToday);
+    rDaily = Math.max(0, used / (basis * 0.03) * 100);
+    rDailyUsd = { used: used, limit: basis * 0.03 };
   }
   // XM mirror account (Shark test)
   const xm = d.xm_account || {};
@@ -581,17 +585,17 @@ function renderObjectives(d) {
   const parts = [];
   if (typeof lows.day_low === "number" && acc.day_start_balance) {
     const dlPct = (lows.day_low - acc.day_start_balance) / acc.day_start_balance * 100;
-    parts.push(`day low <b>$${fmt(lows.day_low)}</b> <span class="${cls(dlPct)}">(${dlPct >= 0 ? "+" : ""}${dlPct.toFixed(2)}% from day start)</span>`);
+    parts.push(`day low <b>$${fmt(lows.day_low - vOff)}</b> <span class="${cls(dlPct)}">(${dlPct >= 0 ? "+" : ""}${dlPct.toFixed(2)}% from day start)</span>`);
   }
   if (typeof lows.all_low === "number") {
-    parts.push(`all-time low <b>$${fmt(lows.all_low)}</b>`);
+    parts.push(`all-time low <b>$${fmt(lows.all_low - vOff)}</b>`);
   }
   if (floatPl != null && Math.abs(floatPl) >= 0.01) {
     parts.push(`floating <span class="${cls(floatPl)}"><b>${sign(floatPl)}</b></span>`);
   }
   if (parts.length) extraHtml = `<div class="lvl" style="margin-top:3px">${parts.join(" · ")}</div>`;
   document.getElementById("objPanel").innerHTML = sharkMark +
-    metricsBlock("FTMO trial — 🦈 Shark rules test", rEq, rInit, acc.day_start_balance, rDaily, rDailyUsd, extraHtml, { target_pct: 6, floatPl: floatPl }) +
+    metricsBlock("FTMO trial — 🦈 Shark test ($5k sizing)", rEq - vOff, basis, acc.day_start_balance, rDaily, rDailyUsd, extraHtml, { target_pct: 6, max_dd_pct: 6, floatCap: 1, floatPl: floatPl }) +
     (xmBlock || "");  // XM mirror IS the shadow ledger now (real fills) — no separate simulated block
 }
 
