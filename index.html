@@ -260,15 +260,18 @@ async function refresh() {
     document.getElementById("trigPanel").innerHTML = tKeys.length ? `<table>
       <tr><th>Symbol</th><th>Now</th><th>Long above</th><th>Short below</th><th>Exit long if below</th><th>Plan</th></tr>
       ${tKeys.map(s => { const t = trig[s]; const px = prices[s];
+        const side = t.long_above ? "long" : (t.short_below ? "short" : "");
         const lvl = px ? (t.long_above ?? t.short_below) : null;
         let dist = "";
+        let c = "";
         if (px && lvl) {
           const d2 = ((px - lvl) / px * 100);
-          dist = `<div class="lvl">${d2 >= 0 ? "+" : ""}${d2.toFixed(2)}% vs ${t.long_above ? "long" : "short"} trigger</div>`;
+          c = cls(side === "short" ? (lvl - px) : (px - lvl));
+          dist = `<div class="lvl"><span class="${c}">${d2 >= 0 ? "+" : ""}${d2.toFixed(2)}% vs ${side} trigger</span></div>`;
         }
         return `<tr>
         <td><b>${esc(s)}</b></td>
-        <td data-sym="${esc(s)}" data-lvl="${lvl ?? ""}" data-side="${t.long_above ? "long" : (t.short_below ? "short" : "")}">${px ?? "—"}${dist}</td>
+        <td data-sym="${esc(s)}" data-lvl="${lvl ?? ""}" data-side="${side}">${px != null ? `<span class="${c}">${px}</span>` : "—"}${dist}</td>
         <td data-l="long >">${t.long_above ?? "—"}</td><td data-l="short <">${t.short_below ?? "—"}</td><td data-l="exit <">${t.close_long_below ?? "—"}</td>
         <td style="max-width:340px">${esc(t.note || "")}</td></tr>`; }).join("")}</table>`
       : `<div class="empty">No levels armed.</div>`;
@@ -362,7 +365,7 @@ function renderShadow(d) {
     <span style="color:var(--muted);font-size:12px">record ${wins}W–${losses}L · ${open} tracking · $${RISK} per 1R · started $10,000</span>
   </div>`;
   document.getElementById("shadowPanel").innerHTML = strip + (shadows.length ?
-    '<table><tr><th>When</th><th>Setup</th><th>Entry</th><th>SL / TP</th><th>Now</th><th>Outcome</th><th>Note</th></tr>' +
+    '<table><tr><th>Setup</th><th>Entry</th><th>SL / TP</th><th>Now</th><th>Outcome</th><th>Note</th></tr>' +
       shadows.map(s => {
         const r = s.status === "resolved" ? (s.result === "win" ? "WIN " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R"
                  : "LOSS " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R") : s.status;
@@ -371,18 +374,19 @@ function renderShadow(d) {
         let nowCell;
         if (s.status === "open" && px != null) {
           let ur = "";
+          let c = "pos";
           if (risk) {
             const r2 = s.action === "buy" ? (px - s.entry) / risk : (s.entry - px) / risk;
-            ur = '<div class="lvl">' + (r2 >= 0 ? "+" : "") + r2.toFixed(2) + 'R</div>';
+            c = cls(r2);
+            ur = '<div class="lvl"><span class="' + c + '">' + (r2 >= 0 ? "+" : "") + r2.toFixed(2) + 'R</span></div>';
           }
-          nowCell = '<td data-ssym="' + esc(s.symbol) + '" data-entry="' + s.entry + '" data-sl="' + s.sl + '" data-act="' + esc(s.action) + '" data-l="now">' + px + ur + '</td>';
+          nowCell = '<td data-ssym="' + esc(s.symbol) + '" data-entry="' + s.entry + '" data-sl="' + s.sl + '" data-act="' + esc(s.action) + '" data-l="now"><span class="' + c + '">' + px + '</span>' + ur + '</td>';
         } else if (s.status === "resolved") {
           nowCell = '<td data-l="exit">' + (s.exit ?? "—") + '</td>';
         } else {
           nowCell = '<td>—</td>';
         }
-        return '<tr><td data-l="">' + esc((s.ts_str || "").replace("T", " ").slice(5, 16)) + '</td>' +
-          '<td data-l=""><b>' + esc(s.symbol) + '</b> ' + esc(s.action) + '</td>' +
+        return '<tr><td data-l=""><b>' + esc(s.symbol) + '</b> ' + esc(s.action) + '</td>' +
           '<td data-l="entry">' + s.entry + '</td>' +
           '<td data-l="sl / tp">' + s.sl + ' / ' + s.tp + '</td>' +
           nowCell +
@@ -421,7 +425,7 @@ function renderPositions(rows) {
       <td data-l="side" class="${p.type === "buy" ? "pos" : "neg"}">${esc(p.type)}</td>
       <td data-l="lots">${p.volume}</td>
       <td data-l="entry">${p.open_price}</td>
-      <td data-l="now">${p.current_price}</td>
+      <td data-l="now" class="${cls(p.profit)}">${p.current_price}</td>
       <td data-l="p/l" class="${cls(p.profit)}"><b>${sign(p.profit)}</b></td>
       <td data-l="sl / tp">${p.sl} / ${p.tp}</td>
     </tr>`).join("")}</table>` : `<div class="empty">No open positions — the bot is watching.</div>`;
@@ -451,11 +455,13 @@ function applyTick(tick) {
     const act = td.getAttribute("data-act");
     const risk = Math.abs(entry - sl);
     let ur = "";
+    let c = "pos";
     if (risk) {
       const r2 = act === "buy" ? (px - entry) / risk : (entry - px) / risk;
-      ur = '<div class="lvl">' + (r2 >= 0 ? "+" : "") + r2.toFixed(2) + 'R</div>';
+      c = cls(r2);
+      ur = '<div class="lvl"><span class="' + c + '">' + (r2 >= 0 ? "+" : "") + r2.toFixed(2) + 'R</span></div>';
     }
-    td.innerHTML = px + ur;
+    td.innerHTML = '<span class="' + c + '">' + px + '</span>' + ur;
   });
   document.querySelectorAll("#trigPanel td[data-sym]").forEach(td => {
     const sym = td.getAttribute("data-sym");
@@ -464,11 +470,13 @@ function applyTick(tick) {
     const lvl = parseFloat(td.getAttribute("data-lvl"));
     const side = td.getAttribute("data-side");
     let dist = "";
+    let c = "";
     if (lvl) {
       const d2 = (px - lvl) / px * 100;
-      dist = `<div class="lvl">${d2 >= 0 ? "+" : ""}${d2.toFixed(2)}% vs ${side} trigger</div>`;
+      c = cls(side === "short" ? (lvl - px) : (px - lvl));
+      dist = `<div class="lvl"><span class="${c}">${d2 >= 0 ? "+" : ""}${d2.toFixed(2)}% vs ${side} trigger</span></div>`;
     }
-    td.innerHTML = px + dist;
+    td.innerHTML = `<span class="${c}">${px}</span>` + dist;
   });
 }
 
