@@ -818,43 +818,61 @@ function urlB64ToUint8(b64) {
   const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
   return Uint8Array.from(raw, c => c.charCodeAt(0));
 }
-async function subscribePush(reg) {
-  const key = await (await fetch("/api/push/key")).text();
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlB64ToUint8(key.trim())
-  });
-  await fetch("/api/push/subscribe", { method: "POST",
+const pushBtn = document.getElementById("pushBtn");
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isStandalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+function pushBtnState(txt) {
+  if (pushBtn) { pushBtn.textContent = txt; pushBtn.style.display = "inline-block"; }
+}
+async function doPushSetup() {
+  const standalone = isStandalone;
+  if (!("Notification" in window) || !("PushManager" in window) || !("serviceWorker" in navigator)) {
+    if (isIOS && !standalone) throw new Error("Add to Home Screen first: Share → Add to Home Screen, then open from the icon");
+    throw new Error("this browser has no push support");
+  }
+  const reg = await navigator.serviceWorker.register("/sw.js");
+  await navigator.serviceWorker.ready;
+  const perm = await Notification.requestPermission();  // must run inside the tap
+  if (perm !== "granted") throw new Error("permission " + perm);
+  const key = (await (await fetch("/api/push/key")).text()).trim();
+  const pad = "=".repeat((4 - (key.length % 4)) % 4);
+  const raw = atob((key + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  const appKey = Uint8Array.from(raw, c => c.charCodeAt(0));
+  const reg2 = await navigator.serviceWorker.ready;
+  let sub = await reg2.pushManager.getSubscription();
+  if (!sub) sub = await reg2.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: appKey });
+  const r = await fetch("/api/push/subscribe", { method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ subscription: sub.toJSON() }) });
+  if (!r.ok) throw new Error("server rejected subscription (" + r.status + ")");
 }
-(async () => {
-  try {
-    const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-                  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
-    const btn = document.getElementById("pushBtn");
-    if (isIOS && !standalone) return;  // iOS only allows push from the home-screen app
-    await navigator.serviceWorker.register("/sw.js");
-    const reg = await navigator.serviceWorker.ready;
-    if (Notification.permission === "granted") {
-      const sub = await reg.pushManager.getSubscription();
-      if (!sub) await subscribePush(reg);
-      return;  // enabled — keep the bell hidden
+if (pushBtn) {
+  pushBtn.onclick = async () => {
+    pushBtnState("…");
+    try {
+      await doPushSetup();
+      pushBtn.style.display = "none";
+      try { reg_active && reg_active.showNotification("FTMO AI Bot", { body: "Push enabled ✅" }); } catch (e) {}
+      alert("Push notifications enabled ✅");
+    } catch (e) {
+      pushBtnState("⚠️");
+      alert("Push setup failed: " + e.message);
     }
-    if (Notification.permission === "denied") return;
-    btn.style.display = "inline-block";
-    btn.onclick = async () => {
-      const perm = await Notification.requestPermission();
-      if (perm === "granted") {
-        await subscribePush(reg);
-        btn.style.display = "none";
-      } else {
-        btn.textContent = "🔕";
-      }
-    };
-  } catch (e) { /* push is best-effort */ }
+  };
+}
+let reg_active = null;
+(async () => {  // background: hide the bell when already enabled
+  try {
+    if (isIOS && !isStandalone) { pushBtnState("📲"); pushBtn.title = "Add to Home Screen first (Share → Add to Home Screen)"; return; }
+    if (!("PushManager" in window) || !("Notification" in window)) { pushBtn.style.display = "none"; return; }
+    reg_active = await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
+    if (Notification.permission === "granted") {
+      const sub = await reg_active.pushManager.getSubscription();
+      if (sub) pushBtn.style.display = "none";  // already enabled
+    }
+  } catch (e) { /* leave the bell visible — the tap will report the real error */ }
 })();
 
 
