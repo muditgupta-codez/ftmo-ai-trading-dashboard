@@ -63,6 +63,9 @@
   .bar { height: 8px; background: var(--line); border-radius: 6px; overflow: hidden; margin: 7px 0 5px; }
   .bar > div { height: 100%; background: var(--green); border-radius: 6px; transition: width .4s; }
   .bar > div.warn { background: var(--amber); }
+  .exitbtn { background: rgba(224,82,82,.14); color: var(--red); border: 1px solid rgba(224,82,82,.45);
+             border-radius: 8px; padding: 4px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .exitbtn:active { background: rgba(224,82,82,.32); }
   .foot { margin-top: 26px; text-align: center; color: var(--muted); font-size: 11.5px; }
 
   /* ---- phone ---- */
@@ -437,7 +440,7 @@ function renderPositions(rows) {
   document.getElementById("posCount").className = "v";
   document.getElementById("posTxt").textContent = rows.length ? "live now" : "flat — no exposure";
   document.getElementById("posPanel").innerHTML = rows.length ? `<table>
-    <tr><th>Symbol</th><th>Side</th><th>Lots</th><th>Entry</th><th>Now</th><th>P/L</th><th>SL / TP</th></tr>
+    <tr><th>Symbol</th><th>Side</th><th>Lots</th><th>Entry</th><th>Now</th><th>P/L</th><th>SL / TP</th><th>Exit</th></tr>
     ${rows.map(p => `<tr>
       <td data-l=""><b>${esc(p.symbol)}</b></td>
       <td data-l="side" class="${p.type === "buy" ? "pos" : "neg"}">${esc(p.type)}</td>
@@ -446,10 +449,64 @@ function renderPositions(rows) {
       <td data-l="now" class="${cls(p.profit)}">${p.current_price}</td>
       <td data-l="p/l" class="${cls(p.profit)}"><b>${sign(p.profit)}</b></td>
       <td data-l="sl / tp">${p.sl} / ${p.tp}</td>
+      <td data-l="exit"><button class="exitbtn" onclick="manualExit('${esc(p.symbol)}')">Exit</button></td>
     </tr>`).join("")}</table>` : `<div class="empty">No open positions — the bot is watching.</div>`;
 }
 
 let LATEST = null;
+
+function noteExit(msg, bad) {
+  let t = document.getElementById("exitToast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "exitToast";
+    t.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-size:13.5px;z-index:9;box-shadow:0 4px 18px rgba(0,0,0,.5);max-width:90vw";
+    document.body.appendChild(t);
+  }
+  t.innerHTML = msg;
+  t.style.color = bad ? "var(--red)" : "var(--text)";
+  t.style.display = "block";
+  clearTimeout(t._h);
+  t._h = setTimeout(() => { t.style.display = "none"; }, 7000);
+}
+
+async function pollExitResult(id, sym) {
+  for (let i = 0; i < 12; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      const d = await (await fetch("/api/data", {cache: "no-store"})).json();
+      const c = (d.commands || []).find(x => x.id === id);
+      if (c && (c.status === "done" || c.status === "failed")) {
+        if (c.status === "done") noteExit("✅ " + esc(sym) + " closed — " + esc(c.message || "done"));
+        else {
+          if (/bad pin/i.test(c.message || "")) localStorage.removeItem("exitPin");
+          noteExit("❌ " + esc(sym) + " exit failed — " + esc(c.message || "unknown"), true);
+        }
+        return;
+      }
+    } catch (e) { /* keep polling */ }
+  }
+  noteExit("⏳ " + esc(sym) + " — no confirmation yet (bot may be offline)", true);
+}
+
+async function manualExit(sym) {
+  if (!confirm("Close ALL " + sym + " positions at market price?")) return;
+  let pin = localStorage.getItem("exitPin");
+  if (!pin) {
+    pin = prompt("Manual-exit PIN:");
+    if (!pin) return;
+    localStorage.setItem("exitPin", pin);
+  }
+  noteExit("⏳ sending exit for " + esc(sym) + "…");
+  try {
+    const r = await fetch("/api/command", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({type: "close", symbol: sym, pin})});
+    const j = await r.json();
+    if (!j.ok) { localStorage.removeItem("exitPin"); noteExit("❌ " + esc(j.detail || "command rejected"), true); return; }
+    pollExitResult(j.id, sym);
+  } catch (e) { noteExit("❌ network error sending command", true); }
+}
+
 function applyTick(tick) {
   if (!tick) return;
   if (tick.prices && LATEST) LATEST.prices = tick.prices;
