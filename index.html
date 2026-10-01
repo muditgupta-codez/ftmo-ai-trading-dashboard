@@ -831,9 +831,11 @@ async function subscribePush(reg) {
 (async () => {
   try {
     const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
     const btn = document.getElementById("pushBtn");
-    if (!standalone) return;  // iOS only allows push from the home-screen app
+    if (isIOS && !standalone) return;  // iOS only allows push from the home-screen app
     await navigator.serviceWorker.register("/sw.js");
     const reg = await navigator.serviceWorker.ready;
     if (Notification.permission === "granted") {
