@@ -495,30 +495,42 @@ function computeSim(d) {
   return { sim, pl: sim - 10000, wins, losses, open };
 }
 
-function metricsBlock(name, equity, initial, dayStart, daily, dailyUsd, extrasHtml) {
-  const S1 = initial * 1.10, S2 = S1 * 1.05;   // FTMO 2-Step targets
+function metricsBlock(name, equity, initial, dayStart, daily, dailyUsd, extrasHtml, opts) {
+  opts = opts || {};
+  const tgt = opts.target_pct || 10;
+  const floatPl = opts.floatPl != null ? opts.floatPl : null;
+  const floatCap = opts.floatCap || 1.0;
+  const S1 = initial * (1 + tgt / 100);          // phase 1 target
+  const S2 = opts.showStep2 ? S1 * 1.05 : null;  // FTMO 2-Step phase 2 (+5%)
   const floor = initial * 0.90;
   const pc = v => Math.max(0, Math.min(100, v));
   const t1 = pc((equity - initial) / (S1 - initial) * 100);
-  const t2 = pc((equity - S1) / (S2 - S1) * 100);
+  const t2 = S2 ? pc((equity - S1) / (S2 - S1) * 100) : 0;
   const ml = pc((initial - equity) / (initial - floor) * 100);
+  const fl = floatPl == null ? null : pc(-floatPl / (initial * floatCap / 100) * 100);
   const danger = p => p >= 80 ? "var(--red)" : "var(--amber)";
   const row = (label, pct, color, val) =>
     `<div class="mrow"><div class="mlabel">${label}</div>` +
     `<div class="mbar"><div style="width:${pct.toFixed(1)}%;background:${color}"></div></div>` +
     `<div class="mval">${val}</div></div>`;
   let rows = "";
-  rows += row(`Step 1 target · +10% → $${fmt(S1)}`, t1, "var(--green)",
+  rows += row(`Phase 1 target · +${tgt}% → $${fmt(S1)}`, t1, "var(--green)",
               t1 >= 100 ? '<span class="pos">DONE 🎉</span>' : t1.toFixed(0) + "%");
-  rows += row(`Step 2 target · +5% → $${fmt(S2)}`, t2, "var(--green)",
-              equity >= S1 ? (t2 >= 100 ? '<span class="pos">DONE 🎉</span>' : t2.toFixed(0) + "%") : '<span style="color:var(--muted)">locked</span>');
-  rows += row(`Max loss · −10% equity-based (floor $${fmt(floor)})`, ml, danger(ml), ml.toFixed(0) + "% used");
-  if (daily == null) {
-    rows += row(`Daily loss · −5% (worst point)`, 0, "var(--line)", "—");
-  } else {
-    rows += row(`Daily loss · −5% (worst point)`, daily, danger(daily),
-                daily.toFixed(0) + "% used" + (dailyUsd ? ` · −$${fmt(dailyUsd.used)} of −$${fmt(dailyUsd.limit)}` : ""));
+  if (S2) {
+    rows += row(`Phase 2 target · +5% → $${fmt(S2)}`, t2, "var(--green)",
+                equity >= S1 ? (t2 >= 100 ? '<span class="pos">DONE 🎉</span>' : t2.toFixed(0) + "%") : '<span style="color:var(--muted)">locked</span>');
   }
+  rows += row(`Max loss · −${(initial - floor) / initial * 100}% equity-based (floor $${fmt(floor)})`, ml, danger(ml), ml.toFixed(0) + "% used");
+  if (daily == null) {
+    rows += row(`Daily loss · −3% (worst point)`, 0, "var(--line)", "—");
+  } else {
+    const dlLimit = dailyUsd ? dailyUsd.limit : initial * 0.03;
+    rows += row(`Daily loss · −3% (worst point)`, daily, danger(daily),
+                daily.toFixed(0) + "% used" + (dailyUsd ? ` · −$${fmt(dailyUsd.used)} of −$${fmt(dlLimit)}` : ""));
+  }
+  rows += fl == null
+    ? row(`Floating cap · −1% (worst)`, 0, "var(--line)", "—")
+    : row(`Floating cap · −1% (worst)`, fl, danger(fl), fl.toFixed(0) + "% · " + (floatPl >= 0 ? "+" : "−") + "$" + fmt(Math.abs(floatPl)));
   const buf = equity - floor;
   return `<div style="padding:11px 13px;border-bottom:1px solid var(--line)">
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;align-items:baseline;margin-bottom:4px">
@@ -538,19 +550,39 @@ function renderObjectives(d) {
   const lows = d.equity_lows || {};
   let rDaily = null, rDailyUsd = null;
   if (acc.day_start_balance) {
-    // FTMO breaches on the day's LOWEST equity point (floating counts) —
-    // measure usage at the worst point, not the current one
+    // SharkFunded test: 3% daily, measured at the day's LOWEST equity point
     const lowsToday = (typeof lows.day_low === "number") ? Math.min(lows.day_low, rEq) : rEq;
-    rDaily = Math.max(0, (acc.day_start_balance - lowsToday) / (acc.day_start_balance * 0.05) * 100);
-    rDailyUsd = { used: Math.max(0, acc.day_start_balance - lowsToday), limit: acc.day_start_balance * 0.05 };
+    rDaily = Math.max(0, (acc.day_start_balance - lowsToday) / (acc.day_start_balance * 0.03) * 100);
+    rDailyUsd = { used: Math.max(0, acc.day_start_balance - lowsToday), limit: acc.day_start_balance * 0.03 };
   }
   const sEq = sim.sim;
   let sDaily = null, sDailyUsd = null;
   if (sim.dayStart) {
     const worstSim = (typeof sim.dayLow === "number") ? Math.min(sim.dayLow, sEq) : sEq;
-    sDaily = Math.max(0, (sim.dayStart - worstSim) / (sim.dayStart * 0.05) * 100);
-    sDailyUsd = { used: Math.max(0, sim.dayStart - worstSim), limit: sim.dayStart * 0.05 };
+    sDaily = Math.max(0, (sim.dayStart - worstSim) / (sim.dayStart * 0.03) * 100);
+    sDailyUsd = { used: Math.max(0, sim.dayStart - worstSim), limit: sim.dayStart * 0.03 };
   }
+  // XM mirror account (Shark test)
+  const xm = d.xm_account || {};
+  let xmBlock = "";
+  if (xm.equity != null) {
+    const xmInit = 5000;
+    const xmDay = xm.day_start || xmInit;
+    let xmDaily = null, xmDailyUsd = null;
+    const worstXm = (typeof xm.day_low === "number") ? Math.min(xm.day_low, xm.equity) : xm.equity;
+    xmDaily = Math.max(0, (xmDay - worstXm) / (xmDay * 0.03) * 100);
+    xmDailyUsd = { used: Math.max(0, xmDay - worstXm), limit: xmDay * 0.03 };
+    xmBlock = metricsBlock("XM mirror — 🦈 Shark test", xm.equity, xmInit, xmDay, xmDaily, xmDailyUsd, "", { target_pct: 6, floatPl: xm.floating });
+  }
+  // shark test week marker
+  let sharkMark = "";
+  try {
+    const SHK = (d.watcher && d.watcher.shark_test) || {};
+    const start = SHK.start || "2026-10-02";
+    const days = SHK.days || 7;
+    const dayN = Math.floor((Date.now() - Date.parse(start + "T00:00:00")) / 86400000) + 1;
+    sharkMark = `<div class="lvl" style="margin:2px 13px 8px">🦈 <b>SharkFunded rules test</b> — day ${Math.max(1, dayN)}/${days} on FTMO + XM · gates: 6% target · 3% daily · 6% max · 1% floating${SHK.program ? " · " + esc(SHK.program) : ""}</div>`;
+  } catch (e) {}
   let extraHtml = "";
   const floatPl = (acc.equity != null && acc.balance != null) ? acc.equity - acc.balance : null;
   const parts = [];
@@ -565,9 +597,10 @@ function renderObjectives(d) {
     parts.push(`floating <span class="${cls(floatPl)}"><b>${sign(floatPl)}</b></span>`);
   }
   if (parts.length) extraHtml = `<div class="lvl" style="margin-top:3px">${parts.join(" · ")}</div>`;
-  document.getElementById("objPanel").innerHTML =
-    metricsBlock("Real account — FTMO standard 2-Step", rEq, rInit, acc.day_start_balance, rDaily, rDailyUsd, extraHtml) +
-    metricsBlock("Shadow account (simulated)", sEq, 10000, sim.dayStart, sDaily, sDailyUsd);
+  document.getElementById("objPanel").innerHTML = sharkMark +
+    metricsBlock("FTMO trial — 🦈 Shark rules test", rEq, rInit, acc.day_start_balance, rDaily, rDailyUsd, extraHtml, { target_pct: 6, floatPl: floatPl }) +
+    (xmBlock || "") +
+    metricsBlock("Shadow account (simulated)", sEq, 10000, sim.dayStart, sDaily, sDailyUsd, "", { target_pct: 6, floatPl: null });
 }
 
 function renderShadow(d) {

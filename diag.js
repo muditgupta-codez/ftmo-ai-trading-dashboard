@@ -60,10 +60,10 @@
   const objHtml = (els["objPanel"] && els["objPanel"]._h) || "";
   const shadowObj = objHtml.split("Shadow account")[1] || "";
   const mbarCount = (objHtml.match(/class="mbar"/g) || []).length;
-  const objMetrics = objHtml.includes("Step 1 target") && objHtml.includes("Max loss") && objHtml.includes("Daily loss");
+  const objMetrics = objHtml.includes("Phase 1 target · +6%") && objHtml.includes("Max loss") && objHtml.includes("Daily loss") && objHtml.includes("Floating cap");
   console.log("  objectives: per-metric bars:", mbarCount, "| all metric rows:", objMetrics,
     "| shadow daily usage:", shadowObj.includes("Daily loss"));
-  if (mbarCount < 8 || !objMetrics) fail++;
+  if (mbarCount < 12 || !objMetrics) fail++;
   const oldDaily = objHtml.includes("daily-loss used");
   console.log("  objectives: old text layout gone:", !oldDaily);
   if (oldDaily) fail++;
