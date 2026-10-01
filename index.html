@@ -102,8 +102,11 @@
   <h2>Latest AI decisions</h2>
   <div class="panel"><div class="feed" id="feed"><div class="empty">Loading…</div></div></div>
 
-  <h2>Rejected &amp; shadow trades</h2>
-  <div class="panel" id="rejPanel"><div class="empty">Loading…</div></div>
+  <h2>Shadow trades (declined by AI)</h2>
+  <div class="panel" id="shadowPanel"><div class="empty">Loading…</div></div>
+
+  <h2>Rejected by guardrails</h2>
+  <div class="panel" id="blockedPanel"><div class="empty">Loading…</div></div>
 
   <details>
     <summary>AI journal (the bot's thinking, newest last)</summary>
@@ -219,7 +222,8 @@ async function refresh() {
 
     const trig = (d.triggers && d.triggers.triggers) || {};
     const tKeys = Object.keys(trig);
-    renderRejected(d);
+    renderShadow(d);
+    renderBlocked(d);
 
     const prices = d.prices || {};
     document.getElementById("trigPanel").innerHTML = tKeys.length ? `<table>
@@ -266,8 +270,24 @@ function statusBadge(s) {
   return '<span class="badge" style="background:var(--line);color:var(--muted)">' + esc(s || "—") + '</span>';
 }
 
-function renderRejected(d) {
+function renderShadow(d) {
   const shadows = (d.shadow || []).slice().reverse();
+  document.getElementById("shadowPanel").innerHTML = shadows.length
+    ? '<table><tr><th>When</th><th>Setup</th><th>Entry</th><th>SL / TP</th><th>Outcome</th><th>Note</th></tr>' +
+      shadows.map(s => {
+        const r = s.status === "resolved" ? (s.result === "win" ? "WIN " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R"
+                 : "LOSS " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R") : s.status;
+        return '<tr><td data-l="">' + esc((s.ts_str || "").replace("T", " ").slice(5, 16)) + '</td>' +
+          '<td data-l=""><b>' + esc(s.symbol) + '</b> ' + esc(s.action) + '</td>' +
+          '<td data-l="entry">' + s.entry + '</td>' +
+          '<td data-l="sl / tp">' + s.sl + ' / ' + s.tp + '</td>' +
+          '<td data-l="result">' + statusBadge(r) + '</td>' +
+          '<td data-l="why" style="max-width:300px">' + esc(s.why_refused || s.strategy || "") + '</td></tr>';
+      }).join("") + '</table>'
+    : '<div class="empty">No declined setups tracked yet.</div>';
+}
+
+function renderBlocked(d) {
   const blocked = [];
   (d.decisions || []).forEach(x => {
     if (!Array.isArray(x.decisions)) return;
@@ -278,29 +298,11 @@ function renderRejected(d) {
       }
     });
   });
-  let html = "";
-  if (shadows.length) {
-    html += '<div style="padding:9px 13px 2px;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em">Declined by the AI — tracked hypothetically</div>' +
-      '<table><tr><th>When</th><th>Setup</th><th>Entry</th><th>SL / TP</th><th>Outcome</th><th>Note</th></tr>' +
-      shadows.map(s => {
-        const r = s.status === "resolved" ? (s.result === "win" ? "WIN " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R"
-                 : "LOSS " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R") : s.status;
-        return '<tr><td data-l="">' + esc((s.ts_str || "").replace("T", " ").slice(5, 16)) + '</td>' +
-          '<td data-l=""><b>' + esc(s.symbol) + '</b> ' + esc(s.action) + '</td>' +
-          '<td data-l="entry">' + s.entry + '</td>' +
-          '<td data-l="sl / tp">' + s.sl + ' / ' + s.tp + '</td>' +
-          '<td data-l="result">' + statusBadge(r) + '</td>' +
-          '<td data-l="why" style="max-width:300px">' + esc(s.why_refused || s.strategy || "") + '</td></tr>';
-      }).join("") + '</table>';
-  }
-  if (blocked.length) {
-    html += '<div style="padding:9px 13px 2px;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em">Blocked by risk guardrails</div><table>' +
-      blocked.slice(0, 10).map(b => '<tr><td data-l="">' + esc((b.ts || "").replace("T", " ").slice(5, 16)) + '</td>' +
+  document.getElementById("blockedPanel").innerHTML = blocked.length
+    ? '<table>' + blocked.slice(0, 10).map(b => '<tr><td data-l="">' + esc((b.ts || "").replace("T", " ").slice(5, 16)) + '</td>' +
         '<td data-l=""><b>' + esc(b.dd.symbol) + '</b> ' + esc(b.dd.action) + ' (conf ' + esc(b.dd.confidence) + ')</td>' +
-        '<td data-l="reason" style="max-width:340px">' + esc(b.reason) + '</td></tr>').join("") + '</table>';
-  }
-  document.getElementById("rejPanel").innerHTML =
-    html || '<div class="empty">No rejected or declined setups — nothing refused yet.</div>';
+        '<td data-l="reason" style="max-width:340px">' + esc(b.reason) + '</td></tr>').join("") + '</table>'
+    : '<div class="empty">Nothing blocked — every proposal passed the risk rules.</div>';
 }
 
 function renderPositions(rows) {
