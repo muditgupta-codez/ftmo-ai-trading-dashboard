@@ -529,8 +529,8 @@ function metricsBlock(name, equity, initial, dayStart, daily, dailyUsd, extrasHt
                 daily.toFixed(0) + "% used" + (dailyUsd ? ` · −$${fmt(dailyUsd.used)} of −$${fmt(dlLimit)}` : ""));
   }
   rows += fl == null
-    ? row(`Floating cap · −1% (worst)`, 0, "var(--line)", "—")
-    : row(`Floating cap · −1% (worst)`, fl, danger(fl), fl.toFixed(0) + "% · " + (floatPl >= 0 ? "+" : "−") + "$" + fmt(Math.abs(floatPl)));
+    ? row(`Floating cap · −1% (−$${fmt(initial * floatCap / 100)} max · worst)`, 0, "var(--line)", "—")
+    : row(`Floating cap · −1% (−$${fmt(initial * floatCap / 100)} max · worst)`, fl, danger(fl), fl.toFixed(0) + "% · " + (floatPl >= 0 ? "+" : "−") + "$" + fmt(Math.abs(floatPl)));
   const buf = equity - floor;
   return `<div style="padding:11px 13px;border-bottom:1px solid var(--line)">
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;align-items:baseline;margin-bottom:4px">
