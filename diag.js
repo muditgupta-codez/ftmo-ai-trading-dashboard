@@ -121,6 +121,11 @@
   const hEq = (els["hEquity"] && els["hEquity"]._t) || "";
   console.log("  sticky header equity:", hEq, "| today:", (els["hToday"] && els["hToday"]._t) || "?", "| cnt badges:", ["cntTrig", "cntShadow", "cntFeed", "cntNews"].map(id => (els[id] && els[id]._t) || "-").join(" "));
   if (!/\$[\d,]/.test(hEq)) fail++;
+  if (d.equity_lows && d.equity_lows.day_low) {
+    const okLow = objHtml.includes("day low") && objHtml.includes("equity-based");
+    console.log("  equity lows shown:", okLow, "| day low:", d.equity_lows.day_low);
+    if (!okLow) fail++;
+  }
   console.log(useLocal ? "LOCAL GATE: " + (fail ? "FAIL (" + fail + ")" : "PASS") : "VERIFY DONE, failures: " + fail);
   process.exitCode = fail ? 1 : 0;
 })().catch(e => { console.log("HARNESS ERROR:", e.message); process.exitCode = 1; });
