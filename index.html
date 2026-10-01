@@ -370,7 +370,7 @@ function renderShadow(d) {
           '<td data-l=""><b>' + esc(s.symbol) + '</b> ' + esc(s.action) + '</td>' +
           '<td data-l="entry">' + s.entry + '</td>' +
           '<td data-l="sl / tp">' + s.sl + ' / ' + s.tp + '</td>' +
-          '<td data-l="result">' + statusBadge(r) + '</td>' +
+          '<td data-l="result">' + statusBadge(r) + (s.managed_exit ? ' <span style="font-size:10px;color:var(--muted)">🔒 managed</span>' : '') + '</td>' +
           '<td data-l="why" style="max-width:300px">' + esc(s.why_refused || s.strategy || "") + '</td></tr>';
       }).join("") + '</table>'
     : '<div class="empty">No declined setups tracked yet.</div>');
