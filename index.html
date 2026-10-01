@@ -332,13 +332,14 @@ function ftmoBlock(name, equity, initial, dailyUsedPct, targetPct, note) {
   const floor = initial * (1 - MAXLOSS);
   const buf = equity - floor;
   const daily = dailyUsedPct == null ? null : Math.max(0, Math.min(100, dailyUsedPct));
+  const tpct = (TARGET * 100 % 1) ? (TARGET * 100).toFixed(1) : String(TARGET * 100);
   return `<div style="padding:11px 13px;border-bottom:1px solid var(--line)">
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;align-items:baseline">
       <b>${esc(name)}</b>
       <span class="${note ? "muted" : (prog >= 100 ? "pos" : "muted")}" style="font-size:12px">${note || (prog >= 100 ? "TARGET REACHED 🎉" : "target progress " + prog.toFixed(1) + "%")}</span>
     </div>
     <div class="bar"><div style="width:${prog}%"></div></div>
-    <div class="lvl" style="margin-top:4px">Equity $${fmt(equity)} · profit target $${fmt(initial * (1 + TARGET))} (+${(TARGET * 100).toFixed(0)}%)
+    <div class="lvl" style="margin-top:4px">Equity $${fmt(equity)} · profit target $${fmt(initial * (1 + TARGET))} (+${tpct}%)
     · loss floor $${fmt(floor)} (−10%) · buffer <span class="${buf >= 0 ? "pos" : "neg"}">${buf >= 0 ? "+" : ""}$${fmt(buf)}</span>${daily != null ? " · daily-loss used " + daily.toFixed(0) + "% of −5%" : ""}</div>
   </div>`;
 }
