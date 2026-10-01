@@ -14,7 +14,7 @@
     const els = {};
     global.document = {
       getElementById: (id) => (els[id] = els[id] || {
-        _h: undefined, _t: undefined,
+        _h: undefined, _t: undefined, style: {},
         set innerHTML(v) { this._h = v; }, get innerHTML() { return this._h; },
         set textContent(v) { this._t = v; }, get textContent() { return this._t; },
         classList: { add() {}, toggle() {}, remove() {} }
@@ -35,7 +35,7 @@
   ["objPanel", "posPanel", "trigPanel", "tradePanel", "feed", "shadowPanel", "blockedPanel", "newsPanel"].forEach(k => {
     const ok = els[k] && els[k]._h !== undefined && els[k]._h.length > 0;
     if (!ok) fail++;
-    console.log(" ", k, "| html set:", ok, "| len:", (els[k]._h || "").length);
+    console.log(" ", k, "| html set:", ok, "| len:", ((els[k] && els[k]._h) || "").length);
   });
   const live = els["liveTxt"] ? els["liveTxt"].textContent : "(never touched)";
   console.log("liveTxt:", live);
@@ -107,10 +107,17 @@
   const sorted = openRows.every((v, i) => i === 0 || openRows[i - 1] + 1e-9 >= v);
   console.log("  open Now rows profit-sorted:", sorted, "| unrealized R order:", openRows.map(v => v === -999 ? "?" : v.toFixed(2)).join(", "));
   if (!sorted) fail++;
-  console.log("  wide cells (plan/why/reason/event):", (sp.match(/class="wide"/g) || []).length, "in shadow |",
+  const wideCells = (sp.match(/class="wide"/g) || []).length;
+  console.log("  wide cells (plan/why/reason/event):", wideCells, "in shadow |",
     tp.includes('class="wide"') ? "trig ✓" : "trig ✗");
   if (sp.match(/data-l="why" style/) && !sp.includes('class="wide" data-l="why"')) fail++;
   if (tp.includes('max-width:340px') && !tp.includes('class="wide"')) fail++;
+  const tKeysLen = (d.triggers && d.triggers.triggers) ? Object.keys(d.triggers.triggers).length : 0;
+  const confTxt = (els["confV"] && els["confV"]._t) || "";
+  const confMeters = (tp.match(/class="conf"/g) || []).length;
+  console.log("  confidence card:", confTxt || "(empty)", "| trigger meters:", confMeters);
+  if (!/^\d+$/.test(confTxt)) fail++;
+  if (tKeysLen > 0 && confMeters === 0) fail++;
   console.log(useLocal ? "LOCAL GATE: " + (fail ? "FAIL (" + fail + ")" : "PASS") : "VERIFY DONE, failures: " + fail);
   process.exitCode = fail ? 1 : 0;
 })().catch(e => { console.log("HARNESS ERROR:", e.message); process.exitCode = 1; });

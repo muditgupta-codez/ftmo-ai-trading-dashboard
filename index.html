@@ -53,6 +53,10 @@
   .b-rej  { background: rgba(224,82,82,.16); color: var(--red); }
   .dec .why { margin-top: 5px; font-size: 13px; line-height: 1.45; }
   .lvl { margin-top: 4px; font-size: 12px; color: var(--muted); }
+  .conf { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+  .conf .cbar { flex: 1; max-width: 90px; height: 4px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .conf .cbar i { display: block; height: 100%; }
+  .conf > span { font-size: 10.5px; color: var(--muted); font-weight: 700; }
   .pill { display: inline-block; padding: 2px 9px; border-radius: 20px; background: var(--line);
           font-size: 11.5px; color: var(--muted); margin-right: 6px; }
   details { margin-top: 10px; }
@@ -112,6 +116,9 @@
     <div class="card"><div class="k">Today</div><div class="v" id="dayPl">—</div><div class="s" id="dayTxt">since day start</div></div>
     <div class="card"><div class="k">Open positions</div><div class="v" id="posCount">—</div><div class="s" id="posTxt">—</div></div>
     <div class="card"><div class="k">Bot status</div><div class="v" id="botState">—</div><div class="s" id="botTxt">—</div></div>
+    <div class="card"><div class="k">AI confidence</div><div class="v" id="confV">—</div>
+      <div class="bar" style="height:5px;margin:6px 0 0"><div id="confBarFill" style="width:0%"></div></div>
+      <div class="s" id="confSub">waiting for first cycle</div></div>
   </div>
 
   <details class="sec" open>
@@ -269,6 +276,32 @@ async function refresh() {
     renderBlocked(d);
     renderObjectives(d);
 
+    // latest AI confidence per symbol (last live-cycle decision wins)
+    const confBySym = {};
+    (d.decisions || []).forEach(x => {
+      if (!Array.isArray(x.decisions) || x.mode === "weekly") return;
+      (x.decisions || []).forEach(dd => {
+        confBySym[dd.symbol] = { conf: dd.confidence, action: dd.action,
+                                 regime: dd.regime, approach: dd.approach, ts: x.ts };
+      });
+    });
+    let best = null;
+    Object.entries(confBySym).forEach(([s, v]) => {
+      if (typeof v.conf === "number" && (!best || v.conf > best.conf)) best = Object.assign({ s }, v);
+    });
+    const confColor = c => c >= 70 ? "var(--green)" : c >= 50 ? "var(--amber)" : "var(--muted)";
+    document.getElementById("confV").textContent = best ? best.conf : "—";
+    document.getElementById("confV").className = "v " + (best ? (best.conf >= 70 ? "pos" : best.conf >= 50 ? "amber" : "") : "");
+    const fill = document.getElementById("confBarFill");
+    fill.style.width = (best ? Math.max(0, Math.min(100, best.conf)) : 0) + "%";
+    fill.style.background = best ? confColor(best.conf) : "";
+    document.getElementById("confSub").textContent = best
+      ? best.s + " · top of " + Object.keys(confBySym).length + " watched · trade bar is 70"
+      : "waiting for first cycle";
+    const confMeter = c => (c && typeof c.conf === "number")
+      ? `<div class="conf" title="${esc((c.regime || "") + (c.approach ? " · " + c.approach : ""))}"><div class="cbar"><i style="width:${Math.max(0, Math.min(100, c.conf))}%;background:${confColor(c.conf)}"></i></div><span>${c.conf}</span></div>`
+      : "";
+
     const prices = d.prices || {};
     document.getElementById("trigPanel").innerHTML = tKeys.length ? `<table>
       <tr><th>Symbol</th><th>Now</th><th>Long above</th><th>Short below</th><th>Exit long if below</th><th>Plan</th></tr>
@@ -283,7 +316,7 @@ async function refresh() {
           dist = `<div class="lvl"><span class="${c}">${d2 >= 0 ? "+" : ""}${d2.toFixed(2)}% vs ${side} trigger</span></div>`;
         }
         return `<tr>
-        <td><b>${esc(s)}</b></td>
+        <td><b>${esc(s)}</b>${confMeter(confBySym[s])}</td>
         <td data-sym="${esc(s)}" data-lvl="${lvl ?? ""}" data-side="${side}">${px != null ? `<span class="${c}">${px}</span>` : "—"}${dist}</td>
         <td data-l="long >">${t.long_above ?? "—"}</td><td data-l="short <">${t.short_below ?? "—"}</td><td data-l="exit <">${t.close_long_below ?? "—"}</td>
         <td class="wide" data-l="plan" style="max-width:340px">${esc(t.note || "")}</td></tr>`; }).join("")}</table>`
