@@ -382,8 +382,7 @@ function renderObjectives(d) {
     sDailyUsd = { used: Math.max(0, sim.dayStart - sEq), limit: sim.dayStart * 0.05 };
   }
   document.getElementById("objPanel").innerHTML =
-    twoStepBlock("Real account — FTMO standard 2-Step", rEq, rInit, rDaily,
-                 "FTMO passes the Free Trial itself at +5% ($10,500) — this bar shows the standard Challenge journey (+10%, then +5%).", rDailyUsd) +
+    twoStepBlock("Real account — FTMO standard 2-Step", rEq, rInit, rDaily, null, rDailyUsd) +
     twoStepBlock("Shadow account (simulated)", sEq, 10000, sDaily, null, sDailyUsd);
 }
 
