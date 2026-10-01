@@ -392,8 +392,9 @@ function renderShadow(d) {
   document.getElementById("shadowPanel").innerHTML = strip + warn + (shadows.length ?
     '<table><tr><th>Setup</th><th>Entry</th><th>SL / TP</th><th>Now</th><th>Outcome</th><th>Note</th></tr>' +
       shadows.map(s => {
-        const r = s.status === "resolved" ? (s.result === "win" ? "WIN " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R"
-                 : "LOSS " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R") : s.status;
+        const usd = rm => (rm >= 0 ? "+$" : "−$") + fmt(Math.abs(rm * RISK));
+        const r = s.status === "resolved" ? (s.result === "win" ? "WIN " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R (" + usd(s.r_multiple) + ")"
+                 : "LOSS " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R (" + usd(s.r_multiple) + ")") : s.status;
         let outcomeHtml;
         if (s.status === "resolved") {
           outcomeHtml = '<span class="badge ' + (s.result === "win" ? "b-buy" : "b-rej") + '">' + r + '</span>';
@@ -411,7 +412,7 @@ function renderShadow(d) {
           if (risk) {
             const r2 = s.action === "buy" ? (px - s.entry) / risk : (s.entry - px) / risk;
             c = cls(r2);
-            ur = '<div class="lvl"><span class="' + c + '">' + (r2 >= 0 ? "+" : "") + r2.toFixed(2) + 'R</span></div>';
+            ur = '<div class="lvl"><span class="' + c + '">' + (r2 >= 0 ? "+" : "") + r2.toFixed(2) + 'R (' + (r2 >= 0 ? "+$" : "−$") + fmt(Math.abs(r2 * RISK)) + ')</span></div>';
           }
           nowCell = '<td data-ssym="' + esc(s.symbol) + '" data-entry="' + s.entry + '" data-sl="' + s.sl + '" data-act="' + esc(s.action) + '" data-l="now"><span class="' + c + '">' + px + '</span>' + ur + '</td>';
         } else if (s.status === "resolved") {
@@ -541,12 +542,13 @@ function applyTick(tick) {
     const sl = parseFloat(td.getAttribute("data-sl"));
     const act = td.getAttribute("data-act");
     const risk = Math.abs(entry - sl);
+    const RISK_USD = (LATEST && LATEST.shadow_account && LATEST.shadow_account.risk_per_1r) || 50;
     let ur = "";
     let c = "pos";
     if (risk) {
       const r2 = act === "buy" ? (px - entry) / risk : (entry - px) / risk;
       c = cls(r2);
-      ur = '<div class="lvl"><span class="' + c + '">' + (r2 >= 0 ? "+" : "") + r2.toFixed(2) + 'R</span></div>';
+      ur = '<div class="lvl"><span class="' + c + '">' + (r2 >= 0 ? "+" : "") + r2.toFixed(2) + 'R (' + (r2 >= 0 ? "+$" : "−$") + fmt(Math.abs(r2 * RISK_USD)) + ')</span></div>';
     }
     td.innerHTML = '<span class="' + c + '">' + px + '</span>' + ur;
   });

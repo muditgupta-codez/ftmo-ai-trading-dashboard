@@ -87,6 +87,9 @@
   console.log("  shadow sort (open<wins<losses): positions", iOpen, iWin, iLoss);
   if (iOpen > -1 && iWin > -1 && iOpen > iWin) fail++;
   if (iWin > -1 && iLoss > -1 && iWin > iLoss) fail++;
+  const usdCount = (sp.match(/R \([+−]\$/g) || []).length;
+  console.log("  shadow $ amounts shown:", usdCount, "(badges + open Now cells)");
+  if (hasResolved && usdCount === 0) fail++;
   console.log(useLocal ? "LOCAL GATE: " + (fail ? "FAIL (" + fail + ")" : "PASS") : "VERIFY DONE, failures: " + fail);
   process.exitCode = fail ? 1 : 0;
 })().catch(e => { console.log("HARNESS ERROR:", e.message); process.exitCode = 1; });
