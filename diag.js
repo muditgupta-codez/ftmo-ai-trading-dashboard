@@ -118,6 +118,9 @@
   console.log("  confidence card:", confTxt || "(empty)", "| trigger meters:", confMeters);
   if (!/^\d+$/.test(confTxt)) fail++;
   if (tKeysLen > 0 && confMeters === 0) fail++;
+  const hEq = (els["hEquity"] && els["hEquity"]._t) || "";
+  console.log("  sticky header equity:", hEq, "| today:", (els["hToday"] && els["hToday"]._t) || "?", "| cnt badges:", ["cntTrig", "cntShadow", "cntFeed", "cntNews"].map(id => (els[id] && els[id]._t) || "-").join(" "));
+  if (!/\$[\d,]/.test(hEq)) fail++;
   console.log(useLocal ? "LOCAL GATE: " + (fail ? "FAIL (" + fail + ")" : "PASS") : "VERIFY DONE, failures: " + fail);
   process.exitCode = fail ? 1 : 0;
 })().catch(e => { console.log("HARNESS ERROR:", e.message); process.exitCode = 1; });

@@ -14,8 +14,15 @@
   body { margin: 0; background: var(--bg); color: var(--text);
          font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   .wrap { max-width: 980px; margin: 0 auto; padding: 18px 14px 60px; }
-  header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
-  h1 { font-size: 19px; margin: 0; }
+  header { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+           margin: -18px -14px 14px; padding: 10px 14px; background: rgba(11,15,20,.88);
+           -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  h1 { font-size: 19px; margin: 0; white-space: nowrap; }
+  .hstats { display: flex; gap: 16px; }
+  .hstat { text-align: right; }
+  .hstat .k { display: block; font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .hstat b { font-size: 14.5px; font-variant-numeric: tabular-nums; }
   .live { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
   .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); }
   .dot.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
@@ -34,6 +41,9 @@
   details.sec > summary::before { content: "▸"; color: var(--blue); font-size: 11px; }
   details.sec[open] > summary::before { content: "▾"; }
   details.sec > summary:hover { color: var(--text); }
+  .sdot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex: none; }
+  .cnt { margin-left: auto; background: var(--line); color: var(--muted); border-radius: 10px;
+         padding: 1px 8px; font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
   table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); }
@@ -79,6 +89,10 @@
     h1 { font-size: 16.5px; }
     h2 { margin: 16px 0 6px; }
     .live { font-size: 12px; }
+    header { margin: -12px -10px 10px; padding: 8px 10px; }
+    .hstats { gap: 10px; }
+    .hstat b { font-size: 13px; }
+    .cards > .card:nth-child(5) { grid-column: 1 / -1; }  /* AI confidence gets a full row on phone */
     .cards { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
     .card { padding: 11px 12px; }
     .card .v { font-size: 20px; }
@@ -107,8 +121,14 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>FTMO AI Trading Bot</h1>
-    <div class="live"><span class="dot" id="dot"></span><span id="liveTxt">connecting…</span></div>
+    <div class="brand">
+      <h1>FTMO AI Trading Bot</h1>
+      <div class="live"><span class="dot" id="dot"></span><span id="liveTxt">connecting…</span></div>
+    </div>
+    <div class="hstats">
+      <div class="hstat"><span class="k">Equity</span><b id="hEquity">—</b></div>
+      <div class="hstat"><span class="k">Today</span><b id="hToday">—</b></div>
+    </div>
   </header>
 
   <div class="cards">
@@ -122,47 +142,47 @@
   </div>
 
   <details class="sec" open>
-    <summary>FTMO objectives</summary>
+    <summary><i class="sdot" style="background:var(--green)"></i>FTMO objectives</summary>
     <div class="panel" id="objPanel"><div class="empty">Loading…</div></div>
   </details>
 
   <details class="sec" open>
-    <summary>Open positions</summary>
+    <summary><i class="sdot" style="background:var(--blue)"></i>Open positions<span class="cnt" id="cntPos"></span></summary>
     <div class="panel" id="posPanel"><div class="empty">Loading…</div></div>
   </details>
 
   <details class="sec" open>
-    <summary>Armed trigger levels</summary>
+    <summary><i class="sdot" style="background:var(--blue)"></i>Armed trigger levels<span class="cnt" id="cntTrig"></span></summary>
     <div class="panel" id="trigPanel"><div class="empty">Loading…</div></div>
   </details>
 
   <details class="sec" open>
-    <summary>Shadow trades (declined by AI)</summary>
+    <summary><i class="sdot" style="background:var(--amber)"></i>Shadow trades (declined by AI)<span class="cnt" id="cntShadow"></span></summary>
     <div class="panel" id="shadowPanel"><div class="empty">Loading…</div></div>
   </details>
 
   <details class="sec" open>
-    <summary>Trade history</summary>
+    <summary><i class="sdot" style="background:var(--blue)"></i>Trade history<span class="cnt" id="cntHist"></span></summary>
     <div class="panel" id="tradePanel"><div class="empty">Loading…</div></div>
   </details>
 
   <details class="sec" open>
-    <summary>Latest AI decisions</summary>
+    <summary><i class="sdot" style="background:var(--blue)"></i>Latest AI decisions<span class="cnt" id="cntFeed"></span></summary>
     <div class="panel"><div class="feed" id="feed"><div class="empty">Loading…</div></div></div>
   </details>
 
   <details class="sec" open>
-    <summary>Rejected by guardrails</summary>
+    <summary><i class="sdot" style="background:var(--red)"></i>Rejected by guardrails<span class="cnt" id="cntBlocked"></span></summary>
     <div class="panel" id="blockedPanel"><div class="empty">Loading…</div></div>
   </details>
 
   <details class="sec" open>
-    <summary>AI journal (newest last)</summary>
+    <summary><i class="sdot" style="background:var(--muted)"></i>AI journal (newest last)</summary>
     <pre id="journal">Loading…</pre>
   </details>
 
   <details class="sec" open>
-    <summary>Live news & economic calendar</summary>
+    <summary><i class="sdot" style="background:var(--green)"></i>Live news & economic calendar<span class="cnt" id="cntNews"></span></summary>
     <div class="panel" id="newsPanel"><div class="empty">Loading…</div></div>
   </details>
 
@@ -186,6 +206,7 @@ const ago = ts => {
   return Math.floor(s/86400) + "d ago";
 };
 const esc = t => (t ?? "").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const setCnt = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n > 0 ? n : ""; };
 
 function badge(action, rejected) {
   if (rejected) return `<span class="badge b-rej">REJECTED</span>`;
@@ -207,6 +228,9 @@ async function refresh() {
     const pl = acc.daily_pl_pct ?? 0;
     document.getElementById("dayPl").textContent = sign(pl) + "%";
     document.getElementById("dayPl").className = "v " + cls(pl);
+    document.getElementById("hEquity").textContent = "$" + fmt(acc.equity);
+    document.getElementById("hToday").textContent = sign(pl) + "%";
+    document.getElementById("hToday").className = cls(pl);
     document.getElementById("dayTxt").textContent = "trades today: " + JSON.stringify(acc.trades_today ? Object.values(acc.trades_today).reduce((a,b)=>a+b,0) : 0);
 
     renderPositions(w.position_rows || []);
@@ -226,6 +250,7 @@ async function refresh() {
       newsHtml += `<div class="empty" style="color:var(--red)"><b>⚠ RED-FLAG NEWS IMMINENT — new entries blocked by doctrine</b></div>`;
     }
     const evs = (news.events || []).filter(e => e.in_minutes >= 0).slice(0, 5);
+    setCnt("cntNews", evs.length);
     if (evs.length) {
       let rows = "";
       evs.forEach(e => {
@@ -254,8 +279,8 @@ async function refresh() {
         flat.push({ dd, res: (x.results && x.results[i]) || {}, meta: x });
       });
     });
-    document.getElementById("feed").innerHTML = flat.slice(0, 10).map(item => {
-      const dd = item.dd, res = item.res, meta = item.meta;
+    setCnt("cntFeed", Math.min(flat.length, 10));
+    document.getElementById("feed").innerHTML = flat.slice(0, 10).map(item => {      const dd = item.dd, res = item.res, meta = item.meta;
       const rejected = res && res.ok === false;
       const lots = res && res.lots ? ` · ${res.lots} lots @ ${res.price}` : "";
       const lvl = (dd.stop_loss || dd.take_profit) ? `<div class="lvl">SL ${dd.stop_loss ?? "—"} · TP ${dd.take_profit ?? "—"} · R:R target ≥1.5</div>` : "";
@@ -272,6 +297,7 @@ async function refresh() {
 
     const trig = (d.triggers && d.triggers.triggers) || {};
     const tKeys = Object.keys(trig);
+    setCnt("cntTrig", tKeys.length);
     renderShadow(d);
     renderBlocked(d);
     renderObjectives(d);
@@ -323,6 +349,7 @@ async function refresh() {
       : `<div class="empty">No levels armed.</div>`;
 
     const trades = (d.trades || []).slice().reverse();
+    setCnt("cntHist", trades.length);
     document.getElementById("tradePanel").innerHTML = trades.length ? `<table>
       <tr><th>Time</th><th>Symbol</th><th>Action</th><th>Lots</th><th>Price</th><th>SL</th><th>TP</th><th>Ticket</th></tr>
       ${trades.map(t => `<tr>
@@ -427,6 +454,7 @@ function renderShadow(d) {
   const pl = S.pl;
   const cutoff = Date.now() / 1000 - 24 * 3600;
   const shadows = all.filter(s => (s.ts || 0) >= cutoff);
+  setCnt("cntShadow", shadows.length);
   const rank = s => s.status === "open" ? 0
     : (s.status === "resolved" && s.result === "win") ? 1
     : (s.status === "resolved" && s.result === "loss") ? 2 : 3;
@@ -508,12 +536,14 @@ function renderBlocked(d) {
         '<td data-l=""><b>' + esc(b.dd.symbol) + '</b> ' + esc(b.dd.action) + ' (conf ' + esc(b.dd.confidence) + ')</td>' +
         '<td class="wide" data-l="reason" style="max-width:340px">' + esc(b.reason) + '</td></tr>').join("") + '</table>'
     : '<div class="empty">Nothing blocked — every proposal passed the risk rules.</div>';
+  setCnt("cntBlocked", blocked.length);
 }
 
 function renderPositions(rows) {
   document.getElementById("posCount").textContent = rows.length;
   document.getElementById("posCount").className = "v";
   document.getElementById("posTxt").textContent = rows.length ? "live now" : "flat — no exposure";
+  setCnt("cntPos", rows.length);
   document.getElementById("posPanel").innerHTML = rows.length ? `<table>
     <tr><th>Symbol</th><th>Side</th><th>Lots</th><th>Entry</th><th>Now</th><th>P/L</th><th>SL / TP</th><th>Exit</th></tr>
     ${rows.map(p => `<tr>
@@ -586,15 +616,19 @@ function applyTick(tick) {
   if (!tick) return;
   if (tick.prices && LATEST) LATEST.prices = tick.prices;
   const acc = (LATEST && LATEST.account) || {};
-  if (tick.equity != null) {
-    document.getElementById("equity").textContent = "$" + fmt(tick.equity);
-    if (acc.day_start_balance) {
-      const pl = (tick.equity - acc.day_start_balance) / acc.day_start_balance * 100;
-      const el = document.getElementById("dayPl");
-      el.textContent = (pl >= 0 ? "+" : "") + pl.toFixed(2) + "%";
-      el.className = "v " + (pl >= 0 ? "pos" : "neg");
+    if (tick.equity != null) {
+      document.getElementById("equity").textContent = "$" + fmt(tick.equity);
+      document.getElementById("hEquity").textContent = "$" + fmt(tick.equity);
+      if (acc.day_start_balance) {
+        const pl = (tick.equity - acc.day_start_balance) / acc.day_start_balance * 100;
+        const el = document.getElementById("dayPl");
+        el.textContent = (pl >= 0 ? "+" : "") + pl.toFixed(2) + "%";
+        el.className = "v " + (pl >= 0 ? "pos" : "neg");
+        const ht = document.getElementById("hToday");
+        ht.textContent = (pl >= 0 ? "+" : "") + pl.toFixed(2) + "%";
+        ht.className = cls(pl);
+      }
     }
-  }
   if (tick.positions) renderPositions(tick.positions);
   document.querySelectorAll("#shadowPanel td[data-ssym]").forEach(td => {
     const sym = td.getAttribute("data-ssym");
@@ -669,7 +703,7 @@ connectWS();
 try {
   const store = window.localStorage;
   document.querySelectorAll("details.sec").forEach(d0 => {
-    const key = "sec:" + d0.querySelector("summary").textContent.trim();
+    const key = "sec:" + d0.querySelector("summary").textContent.trim().replace(/\s*\d+$/, "");
     const saved = store.getItem(key);
     if (saved !== null) d0.open = saved === "1";
     d0.addEventListener("toggle", () => { try { store.setItem(key, d0.open ? "1" : "0"); } catch (e) {} });
