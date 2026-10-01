@@ -465,7 +465,7 @@ function computeSim(d) {
   if (sa && typeof sa.balance === "number") {
     return { sim: sa.balance, pl: sa.balance - (sa.initial || 10000), wins: sa.wins || 0,
              losses: sa.losses || 0, open: sa.open || 0,
-             dayStart: sa.day_start_balance, dailyPl: sa.daily_pl, dailyPlPct: sa.daily_pl_pct,
+             dayStart: sa.day_start_balance, dayLow: sa.day_low, dailyPl: sa.daily_pl, dailyPlPct: sa.daily_pl_pct,
              dailyLimit: sa.daily_loss_limit_pct, blocked: !!sa.daily_blocked };
   }
   const all = d.shadow || [];
@@ -501,7 +501,7 @@ function twoStepBlock(name, equity, initial, dailyUsedPct, footnote, dailyUsd, e
       <div style="position:absolute;left:${s1Mark}%;top:0;bottom:0;width:2px;background:var(--amber)"></div></div>
     <div class="lvl" style="margin-top:5px">Step 1 · +10% → $${fmt(S1)} · ${st(equity >= S1, s1Prog, false)}
     &nbsp;·&nbsp; Step 2 · +5% → $${fmt(S2)} · ${st(equity >= S2, s2Prog, equity < S1)}</div>
-    <div class="lvl" style="margin-top:4px">Equity $${fmt(equity)} · loss floor $${fmt(floor)} (−10% · equity-based, floating counts) · buffer <span class="${buf >= 0 ? "pos" : "neg"}">${buf >= 0 ? "+" : ""}$${fmt(buf)}</span>${daily != null ? " · daily-loss used " + daily.toFixed(0) + "% of −5% (<span class=\"" + (dailyUsd && dailyUsd.used > 0 ? "neg" : "pos") + "\">−$" + fmt(dailyUsd ? dailyUsd.used : 0) + "</span> of −$" + fmt(dailyUsd ? dailyUsd.limit : initial * 0.05) + ")" : ""}</div>
+    <div class="lvl" style="margin-top:4px">Equity $${fmt(equity)} · loss floor $${fmt(floor)} (−10% · equity-based, floating counts) · buffer <span class="${buf >= 0 ? "pos" : "neg"}">${buf >= 0 ? "+" : ""}$${fmt(buf)}</span>${daily != null ? " · daily-loss used " + daily.toFixed(0) + "% of −5% (<span class=\"" + (dailyUsd && dailyUsd.used > 0 ? "neg" : "pos") + "\">−$" + fmt(dailyUsd ? dailyUsd.used : 0) + "</span> of −$" + fmt(dailyUsd ? dailyUsd.limit : initial * 0.05) + " · worst point)" : ""}</div>
     ${extraHtml || ""}
     ${footnote ? `<div class="lvl" style="margin-top:3px;color:var(--muted)">${footnote}</div>` : ""}
   </div>`;
@@ -512,20 +512,24 @@ function renderObjectives(d) {
   const acc = d.account || {};
   const rInit = acc.initial_balance || 10000;
   const rEq = acc.equity != null ? acc.equity : rInit;
+  const lows = d.equity_lows || {};
   let rDaily = null, rDailyUsd = null;
   if (acc.day_start_balance) {
-    rDaily = Math.max(0, (acc.day_start_balance - rEq) / (acc.day_start_balance * 0.05) * 100);
-    rDailyUsd = { used: Math.max(0, acc.day_start_balance - rEq), limit: acc.day_start_balance * 0.05 };
+    // FTMO breaches on the day's LOWEST equity point (floating counts) —
+    // measure usage at the worst point, not the current one
+    const lowsToday = (typeof lows.day_low === "number") ? Math.min(lows.day_low, rEq) : rEq;
+    rDaily = Math.max(0, (acc.day_start_balance - lowsToday) / (acc.day_start_balance * 0.05) * 100);
+    rDailyUsd = { used: Math.max(0, acc.day_start_balance - lowsToday), limit: acc.day_start_balance * 0.05 };
   }
   const sInit = 10000;
   const sEq = sim.sim;
   const sProg = Math.max(0, Math.min(100, sim.pl / (sInit * 0.10) * 100));
   let sDaily = null, sDailyUsd = null;
   if (sim.dayStart) {
-    sDaily = Math.max(0, (sim.dayStart - sEq) / (sim.dayStart * 0.05) * 100);
-    sDailyUsd = { used: Math.max(0, sim.dayStart - sEq), limit: sim.dayStart * 0.05 };
+    const worstSim = (typeof sim.dayLow === "number") ? Math.min(sim.dayLow, sEq) : sEq;
+    sDaily = Math.max(0, (sim.dayStart - worstSim) / (sim.dayStart * 0.05) * 100);
+    sDailyUsd = { used: Math.max(0, sim.dayStart - worstSim), limit: sim.dayStart * 0.05 };
   }
-  const lows = d.equity_lows || {};
   let extraHtml = "";
   const floatPl = (acc.equity != null && acc.balance != null) ? acc.equity - acc.balance : null;
   const parts = [];
