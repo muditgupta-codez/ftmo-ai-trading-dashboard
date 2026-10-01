@@ -1,6 +1,6 @@
 {
   "name": "FTMO AI Trading Bot",
-  "short_name": "FTMO Bot",
+  "short_name": "FTMO",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
