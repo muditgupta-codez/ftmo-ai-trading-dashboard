@@ -372,6 +372,10 @@ function renderShadow(d) {
   const pl = S.pl;
   const cutoff = Date.now() / 1000 - 24 * 3600;
   const shadows = all.filter(s => (s.ts || 0) >= cutoff);
+  const rank = s => s.status === "open" ? 0
+    : (s.status === "resolved" && s.result === "win") ? 1
+    : (s.status === "resolved" && s.result === "loss") ? 2 : 3;
+  shadows.sort((a, b) => rank(a) - rank(b) || (b.ts || 0) - (a.ts || 0));
   const dailyTxt = (typeof S.dailyPl === "number")
     ? ` <span class="${cls(S.dailyPl)}" style="font-weight:700">today ${S.dailyPl >= 0 ? "+" : "−"}$${fmt(Math.abs(S.dailyPl))} (${S.dailyPlPct >= 0 ? "+" : ""}${Number(S.dailyPlPct).toFixed(2)}%)</span>`
     : "";

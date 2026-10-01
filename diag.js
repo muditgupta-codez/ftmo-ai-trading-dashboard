@@ -83,6 +83,10 @@
   console.log("  shadow WIN badges green:", winBadges, "| LOSS badges red:", lossBadges, "| resolved rows exist:", hasResolved);
   if (hasResolved && (winBadges + lossBadges) === 0) fail++;
   if (hasResolved && /badge" style="background:var\(--line\)[^>]*>(WIN|LOSS)/.test(sp)) { console.log("  GRAY win/loss badge still present!"); fail++; }
+  const iOpen = sp.indexOf('b-close">OPEN'), iWin = sp.indexOf('b-buy">WIN'), iLoss = sp.indexOf('b-rej">LOSS');
+  console.log("  shadow sort (open<wins<losses): positions", iOpen, iWin, iLoss);
+  if (iOpen > -1 && iWin > -1 && iOpen > iWin) fail++;
+  if (iWin > -1 && iLoss > -1 && iWin > iLoss) fail++;
   console.log(useLocal ? "LOCAL GATE: " + (fail ? "FAIL (" + fail + ")" : "PASS") : "VERIFY DONE, failures: " + fail);
   process.exitCode = fail ? 1 : 0;
 })().catch(e => { console.log("HARNESS ERROR:", e.message); process.exitCode = 1; });
