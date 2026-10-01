@@ -326,8 +326,8 @@ function computeSim(d) {
   return { sim, pl: sim - 10000, wins, losses, open };
 }
 
-function ftmoBlock(name, equity, initial, dailyUsedPct, isShadow) {
-  const TARGET = 0.10, MAXLOSS = 0.10, DAILY = 0.05;
+function ftmoBlock(name, equity, initial, dailyUsedPct, targetPct) {
+  const TARGET = targetPct || 0.05, MAXLOSS = 0.10, DAILY = 0.05;  // Free Trial target is 5% (FTMO halves the 10%); flip to 0.10 if a paid Challenge is bought
   const prog = Math.max(0, Math.min(100, (equity - initial) / (initial * TARGET) * 100));
   const floor = initial * (1 - MAXLOSS);
   const buf = equity - floor;
@@ -338,7 +338,7 @@ function ftmoBlock(name, equity, initial, dailyUsedPct, isShadow) {
       <span class="${prog >= 100 ? "pos" : "muted"}" style="font-size:12px">${prog >= 100 ? "TARGET REACHED 🎉" : "target progress " + prog.toFixed(1)}%</span>
     </div>
     <div class="bar"><div style="width:${prog}%"></div></div>
-    <div class="lvl" style="margin-top:4px">Equity $${fmt(equity)} · profit target $${fmt(initial * (1 + TARGET))} (+10%)
+    <div class="lvl" style="margin-top:4px">Equity $${fmt(equity)} · profit target $${fmt(initial * (1 + TARGET))} (+${(TARGET * 100).toFixed(0)}%)
     · loss floor $${fmt(floor)} (−10%) · buffer <span class="${buf >= 0 ? "pos" : "neg"}">${buf >= 0 ? "+" : ""}$${fmt(buf)}</span>${daily != null ? " · daily-loss used " + daily.toFixed(0) + "% of −5%" : ""}</div>
   </div>`;
 }
