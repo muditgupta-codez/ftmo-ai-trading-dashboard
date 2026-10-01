@@ -335,7 +335,7 @@ function ftmoBlock(name, equity, initial, dailyUsedPct, targetPct) {
   return `<div style="padding:11px 13px;border-bottom:1px solid var(--line)">
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;align-items:baseline">
       <b>${esc(name)}</b>
-      <span class="${prog >= 100 ? "pos" : "muted"}" style="font-size:12px">${prog >= 100 ? "TARGET REACHED 🎉" : "target progress " + prog.toFixed(1)}%</span>
+      <span class="${prog >= 100 ? "pos" : "muted"}" style="font-size:12px">${prog >= 100 ? "TARGET REACHED 🎉" : "target progress " + prog.toFixed(1) + "%"}</span>
     </div>
     <div class="bar"><div style="width:${prog}%"></div></div>
     <div class="lvl" style="margin-top:4px">Equity $${fmt(equity)} · profit target $${fmt(initial * (1 + TARGET))} (+${(TARGET * 100).toFixed(0)}%)
