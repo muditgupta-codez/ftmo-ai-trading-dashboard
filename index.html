@@ -120,7 +120,7 @@
     details.sec > summary { padding: 11px 2px; font-size: 13.5px; }  /* comfortable tap target */
     .cnt { font-size: 11.5px; }
     th { display: none; }
-    table tr { display: block; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+    table tr { display: block; padding: 7px 10px; border-bottom: 1px solid var(--line); }
     table tr:last-child { border-bottom: none; }
     table td { display: inline-block; width: 50%; box-sizing: border-box; vertical-align: top;
                border-bottom: none; padding: 5px 8px 5px 0; font-size: 14.5px;
@@ -699,20 +699,19 @@ function renderPositions(rows) {
   document.getElementById("posTxt").textContent = rows.length ? "live now" : "flat — no exposure";
   setCnt("cntPos", rows.length);
   document.getElementById("posPanel").innerHTML = rows.length ? `<table>
-    <tr><th>Symbol</th><th>Side</th><th>Lots</th><th>Entry</th><th>Now</th><th>P/L</th><th>SL / TP</th><th>Trigger</th><th>Exit</th></tr>
+    <tr><th>Symbol</th><th>Side · Lots</th><th>Entry → Now</th><th>P/L</th><th>SL / TP</th><th>Trigger</th><th>Exit</th></tr>
     ${rows.map(p => {
       const t = ((LATEST && LATEST.triggers && LATEST.triggers.triggers) || {})[p.symbol] || {};
       const trigTxt = (p.type === "buy"
         ? [t.long_above ? "long > " + t.long_above : "", t.close_long_below ? "exit < " + t.close_long_below : ""]
         : [t.short_below ? "short < " + t.short_below : "", t.close_short_above ? "exit > " + t.close_short_above : ""]
       ).filter(Boolean).join(" · ");
+      const worstTxt = (p.mae_usd || 0) < 0 ? ` · worst −$${fmt(Math.abs(p.mae_usd))} (${Number(p.mae_r).toFixed(2)}R)` : "";
       return `<tr>
       <td data-l=""><b>${esc(p.symbol)}</b></td>
-      <td data-l="side" class="${p.type === "buy" ? "pos" : "neg"}">${esc(p.type)}</td>
-      <td data-l="lots">${p.volume}</td>
-      <td data-l="entry">${p.open_price}</td>
-      <td data-l="now" class="${cls(p.profit)}">${p.current_price}</td>
-      <td data-l="p/l" class="${cls(p.profit)}"><b>${sign(p.profit)}</b>${(p.mae_usd || 0) < 0 ? `<div class="lvl">worst <span class="neg">−$${fmt(Math.abs(p.mae_usd))}</span> (${Number(p.mae_r).toFixed(2)}R)</div>` : ""}</td>
+      <td data-l="side · lots" class="${p.type === "buy" ? "pos" : "neg"}">${esc(p.type)} ${p.volume}</td>
+      <td data-l="entry → now">${p.open_price} → <b>${p.current_price}</b></td>
+      <td data-l="p/l" class="${cls(p.profit)}"><b>${sign(p.profit)}</b><span style="color:var(--muted);font-size:11px">${worstTxt}</span></td>
       <td data-l="sl / tp">${p.sl} / ${p.tp}</td>
       <td class="wide" data-l="trigger" title="${esc(t.note || "")}">${trigTxt || "—"}</td>
       <td data-l="exit"><button class="exitbtn" onclick="manualExit('${esc(p.symbol)}')">Exit</button></td>
