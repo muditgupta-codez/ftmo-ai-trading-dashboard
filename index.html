@@ -514,13 +514,14 @@ function metricsBlock(name, equity, initial, dayStart, daily, dailyUsd, extrasHt
     `<div class="mbar"><div style="width:${pct.toFixed(1)}%;background:${color}"></div></div>` +
     `<div class="mval">${val}</div></div>`;
   let rows = "";
-  rows += row(`Phase 1 target · +${tgt}% → $${fmt(S1)}`, t1, "var(--green)",
+  rows += row(`Phase 1 target · +${tgt}% (+$${fmt(initial * tgt / 100)} → $${fmt(S1)})`, t1, "var(--green)",
               t1 >= 100 ? '<span class="pos">DONE 🎉</span>' : t1.toFixed(0) + "%");
   if (S2) {
-    rows += row(`Phase 2 target · +5% → $${fmt(S2)}`, t2, "var(--green)",
+    rows += row(`Phase 2 target · +5% (+$${fmt(S1 * 0.05)} → $${fmt(S2)})`, t2, "var(--green)",
                 equity >= S1 ? (t2 >= 100 ? '<span class="pos">DONE 🎉</span>' : t2.toFixed(0) + "%") : '<span style="color:var(--muted)">locked</span>');
   }
-  rows += row(`Max loss · −${(initial - floor) / initial * 100}% equity-based (floor $${fmt(floor)})`, ml, danger(ml), ml.toFixed(0) + "% used");
+  rows += row(`Max loss · −${(initial - floor) / initial * 100}% equity-based (floor $${fmt(floor)})`, ml, danger(ml),
+              ml.toFixed(0) + "% used · −$" + fmt(Math.max(0, initial - equity)) + " of −$" + fmt(initial - floor));
   if (daily == null) {
     rows += row(`Daily loss · −3% (worst point)`, 0, "var(--line)", "—");
   } else {
