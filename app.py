@@ -18,12 +18,14 @@ import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, PlainTextResponse
 
 TOKEN = os.environ.get("INGEST_TOKEN", "change-me")
 DATA_FILE = Path(os.environ.get("DATA_FILE", "data/latest.json"))
 TICK_FILE = Path(os.environ.get("TICK_FILE", "data/latest_tick.json"))
 CMD_FILE = Path(os.environ.get("CMD_FILE", "data/commands.json"))
+SUBS_FILE = Path(os.environ.get("SUBS_FILE", "data/subs.json"))
+VAPID_PUB = os.environ.get("VAPID_PUB", "")
 
 app = FastAPI(title="FTMO AI Bot Dashboard")
 STATE: dict = {"payload": None}
@@ -230,6 +232,88 @@ def data():
     merged["commands"] = [{k: c[k] for k in ("id", "type", "symbol", "status", "message", "ts") if k in c}
                           for c in CMDS[-20:]]
     return JSONResponse(merged)
+
+
+# ---- web push (iOS home-screen / desktop PWA) ----
+
+@app.get("/sw.js")
+def sw_js():
+    return FileResponse("sw.js", media_type="application/javascript")
+
+
+@app.get("/manifest.webmanifest")
+def manifest():
+    return FileResponse("manifest.webmanifest", media_type="application/manifest+json")
+
+
+@app.get("/icon-192.png")
+def icon192():
+    return FileResponse("icon-192.png", media_type="image/png")
+
+
+@app.get("/icon-512.png")
+def icon512():
+    return FileResponse("icon-512.png", media_type="image/png")
+
+
+@app.get("/api/push/key")
+def push_key():
+    return PlainTextResponse(VAPID_PUB)
+
+
+def _load_subs():
+    _load_disk()
+    try:
+        return json.loads(SUBS_FILE.read_text())
+    except Exception:
+        return []
+
+
+def _save_subs(subs):
+    try:
+        SUBS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        SUBS_FILE.write_text(json.dumps(subs))
+    except Exception:
+        pass
+
+
+@app.post("/api/push/subscribe")
+async def push_subscribe(request: Request):
+    """Browsers can't hold the ingest token — the PIN/data risk of a public
+    subscribe endpoint is just junk entries; they never see real pushes."""
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="bad json")
+    sub = body.get("subscription") or {}
+    if not isinstance(sub, dict) or not sub.get("endpoint"):
+        raise HTTPException(status_code=400, detail="missing subscription endpoint")
+    subs = _load_subs()
+    subs = [s for s in subs if s.get("endpoint") != sub.get("endpoint")]
+    subs.append(sub)
+    if len(subs) > 20:
+        subs = subs[-20:]
+    _save_subs(subs)
+    return {"ok": True, "count": len(subs)}
+
+
+@app.get("/api/push/subscriptions")
+def push_subs_get(authorization: str = Header(default="")):
+    _auth(authorization)
+    return {"subscriptions": _load_subs()}
+
+
+@app.post("/api/push/subscriptions")
+async def push_subs_set(request: Request, authorization: str = Header(default="")):
+    """The bot is the source of truth — it restores subs after a server rebuild."""
+    _auth(authorization)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="bad json")
+    subs = body.get("subscriptions") or []
+    _save_subs(subs)
+    return {"ok": True, "count": len(subs)}
 
 
 @app.get("/", response_class=HTMLResponse)
