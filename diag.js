@@ -53,6 +53,13 @@
     console.log("  open-positions Now colored:", posColored);
     if (posColored === 0) fail++;
   } else console.log("  open-positions: no rows (flat) — render path still color-safe");
+  const hasToday = sp.includes("today +$") || sp.includes("today −$") || sp.includes("today -$");
+  console.log("  shadow strip daily P/L shown:", hasToday, "| server account:", !!(d.shadow_account && d.shadow_account.balance));
+  const objHtml = (els["objPanel"] && els["objPanel"]._h) || "";
+  const shadowObj = objHtml.split("Shadow account")[1] || "";
+  console.log("  objectives: shadow daily-loss usage shown:", shadowObj.includes("daily-loss used"));
+  if (d.shadow_account && d.shadow_account.balance && !hasToday) fail++;
+  if (d.shadow_account && d.shadow_account.balance && !shadowObj.includes("daily-loss used")) fail++;
   console.log(useLocal ? "LOCAL GATE: " + (fail ? "FAIL (" + fail + ")" : "PASS") : "VERIFY DONE, failures: " + fail);
   process.exitCode = fail ? 1 : 0;
 })().catch(e => { console.log("HARNESS ERROR:", e.message); process.exitCode = 1; });
