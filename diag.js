@@ -93,6 +93,20 @@
   const usdCount = (sp.match(/R \([+−]\$/g) || []).length;
   console.log("  shadow $ amounts shown:", usdCount, "(badges + open Now cells)");
   if (hasResolved && usdCount === 0) fail++;
+  // open shadow rows must be sorted by unrealized R (profitable first)
+  const openRows = [...sp.matchAll(/data-ssym="([A-Z.]+)"/g)].map(m => m[1]);
+  const urOfSym = sym => {
+    const s = (d.shadow || []).find(x => x.symbol === sym && x.status === "open");
+    if (!s) return -999;
+    const px = (d.prices || {})[sym];
+    const risk = Math.abs(s.entry - s.sl);
+    if (px == null || !risk) return -999;
+    return s.action === "buy" ? (px - s.entry) / risk : (s.entry - px) / risk;
+  };
+  const urs = openRows.map(urOfSym);
+  const sorted = urs.every((v, i) => i === 0 || urs[i - 1] + 1e-9 >= v);
+  console.log("  open Now rows profit-sorted:", sorted, "| unrealized R order:", urs.map(v => v === -999 ? "?" : v.toFixed(2)).join(", "));
+  if (!sorted) fail++;
   console.log("  wide cells (plan/why/reason/event):", (sp.match(/class="wide"/g) || []).length, "in shadow |",
     tp.includes('class="wide"') ? "trig ✓" : "trig ✗");
   if (sp.match(/data-l="why" style/) && !sp.includes('class="wide" data-l="why"')) fail++;

@@ -398,7 +398,14 @@ function renderShadow(d) {
   const rank = s => s.status === "open" ? 0
     : (s.status === "resolved" && s.result === "win") ? 1
     : (s.status === "resolved" && s.result === "loss") ? 2 : 3;
-  shadows.sort((a, b) => rank(a) - rank(b) || (b.ts || 0) - (a.ts || 0));
+  const urOf = s => {
+    if (s.status !== "open") return -999;
+    const px = (d.prices || {})[s.symbol];
+    const risk = Math.abs(s.entry - s.sl);
+    if (px == null || !risk) return -999;
+    return s.action === "buy" ? (px - s.entry) / risk : (s.entry - px) / risk;
+  };
+  shadows.sort((a, b) => rank(a) - rank(b) || urOf(b) - urOf(a) || (b.ts || 0) - (a.ts || 0));
   const dailyTxt = (typeof S.dailyPl === "number")
     ? ` <span class="${cls(S.dailyPl)}" style="font-weight:700">today ${S.dailyPl >= 0 ? "+" : "−"}$${fmt(Math.abs(S.dailyPl))} (${S.dailyPlPct >= 0 ? "+" : ""}${Number(S.dailyPlPct).toFixed(2)}%)</span>`
     : "";
@@ -575,6 +582,23 @@ function applyTick(tick) {
     }
     td.innerHTML = '<span class="' + c + '">' + px + '</span>' + ur;
   });
+  // live re-sort: open shadow rows, most profitable first (resolved rows stay below)
+  const stbl = document.querySelector("#shadowPanel table");
+  if (stbl) {
+    const openRows = [...stbl.rows].filter(tr => tr.querySelector("td[data-ssym]"));
+    const urOfRow = tr => {
+      const td = tr.querySelector("td[data-ssym]");
+      const entry = parseFloat(td.getAttribute("data-entry"));
+      const sl = parseFloat(td.getAttribute("data-sl"));
+      const risk = Math.abs(entry - sl);
+      const p = tick.prices ? tick.prices[td.getAttribute("data-ssym")] : null;
+      if (p == null || !risk) return -999;
+      return td.getAttribute("data-act") === "buy" ? (p - entry) / risk : (entry - p) / risk;
+    };
+    const firstResolved = [...stbl.rows].find(tr => !tr.querySelector("td[data-ssym]"));
+    openRows.sort((a, b) => urOfRow(b) - urOfRow(a))
+            .forEach(tr => stbl.insertBefore(tr, firstResolved || null));
+  }
   document.querySelectorAll("#trigPanel td[data-sym]").forEach(td => {
     const sym = td.getAttribute("data-sym");
     const px = tick.prices ? tick.prices[sym] : null;
