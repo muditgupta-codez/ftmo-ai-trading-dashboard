@@ -78,8 +78,8 @@
   const pp2 = (r2.els["posPanel"] && r2.els["posPanel"]._h) || "";
   const hasBtn = pp2.includes("manualExit(&#39;EURUSD&#39;)") || pp2.includes("manualExit('EURUSD')") || /manualExit\(.?EURUSD/.test(pp2);
   console.log("--- pass 2: synthetic position ---");
-  console.log("  Exit button rendered:", hasBtn, "| exitbtn class:", pp2.includes("exitbtn"), "| Exit th:", pp2.includes("<th>Exit</th>"));
-  if (!hasBtn || !pp2.includes("exitbtn") || !pp2.includes("<th>Exit</th>")) fail++;
+  console.log("  Exit button rendered:", hasBtn, "| exitbtn class:", pp2.includes("exitbtn"), "| Exit th:", pp2.includes("<th>Exit</th>"), "| trigger cell:", pp2.includes('data-l="trigger"'));
+  if (!hasBtn || !pp2.includes("exitbtn") || !pp2.includes("<th>Exit</th>") || !pp2.includes('data-l="trigger"')) fail++;
   const hasResolved = (d.shadow || []).some(s => s.status === "resolved");
   const winBadges = (sp.match(/b-buy">WIN/g) || []).length;
   const lossBadges = (sp.match(/b-rej">LOSS/g) || []).length;
