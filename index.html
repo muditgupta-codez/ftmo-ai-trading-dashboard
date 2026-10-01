@@ -586,7 +586,7 @@ function renderPositions(rows) {
       <td data-l="lots">${p.volume}</td>
       <td data-l="entry">${p.open_price}</td>
       <td data-l="now" class="${cls(p.profit)}">${p.current_price}</td>
-      <td data-l="p/l" class="${cls(p.profit)}"><b>${sign(p.profit)}</b></td>
+      <td data-l="p/l" class="${cls(p.profit)}"><b>${sign(p.profit)}</b>${(p.mae_usd || 0) < 0 ? `<div class="lvl">worst <span class="neg">−$${fmt(Math.abs(p.mae_usd))}</span> (${Number(p.mae_r).toFixed(2)}R)</div>` : ""}</td>
       <td data-l="sl / tp">${p.sl} / ${p.tp}</td>
       <td class="wide" data-l="trigger" title="${esc(t.note || "")}">${trigTxt || "—"}</td>
       <td data-l="exit"><button class="exitbtn" onclick="manualExit('${esc(p.symbol)}')">Exit</button></td>
