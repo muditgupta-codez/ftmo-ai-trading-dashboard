@@ -269,7 +269,7 @@ async function refresh() {
         let c = "";
         if (px && lvl) {
           const d2 = ((px - lvl) / px * 100);
-          c = cls(side === "short" ? (lvl - px) : (px - lvl));
+          c = cls(px - lvl);
           dist = `<div class="lvl"><span class="${c}">${d2 >= 0 ? "+" : ""}${d2.toFixed(2)}% vs ${side} trigger</span></div>`;
         }
         return `<tr>
@@ -556,7 +556,7 @@ function applyTick(tick) {
     let c = "";
     if (lvl) {
       const d2 = (px - lvl) / px * 100;
-      c = cls(side === "short" ? (lvl - px) : (px - lvl));
+      c = cls(px - lvl);
       dist = `<div class="lvl"><span class="${c}">${d2 >= 0 ? "+" : ""}${d2.toFixed(2)}% vs ${side} trigger</span></div>`;
     }
     td.innerHTML = `<span class="${c}">${px}</span>` + dist;
