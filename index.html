@@ -595,7 +595,7 @@ function renderObjectives(d) {
   }
   if (parts.length) extraHtml = `<div class="lvl" style="margin-top:3px">${parts.join(" · ")}</div>`;
   document.getElementById("objPanel").innerHTML = sharkMark +
-    metricsBlock("FTMO trial — 🦈 Shark test ($5k sizing)", rEq - vOff, basis, acc.day_start_balance, rDaily, rDailyUsd, extraHtml, { target_pct: 6, max_dd_pct: 6, floatCap: 1, floatPl: floatPl }) +
+    metricsBlock("FTMO trial — 🦈 Shark test ($5k sizing · real equity $" + fmt(rEq) + ")", rEq - vOff, basis, acc.day_start_balance, rDaily, rDailyUsd, extraHtml, { target_pct: 6, max_dd_pct: 6, floatCap: 1, floatPl: floatPl }) +
     (xmBlock || "");  // XM mirror IS the shadow ledger now (real fills) — no separate simulated block
 }
 
