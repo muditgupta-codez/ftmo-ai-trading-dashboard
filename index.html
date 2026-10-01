@@ -271,7 +271,8 @@ function statusBadge(s) {
 }
 
 function renderShadow(d) {
-  const shadows = (d.shadow || []).slice().reverse();
+  const cutoff = Date.now() / 1000 - 24 * 3600;
+  const shadows = (d.shadow || []).filter(s => (s.ts || 0) >= cutoff).slice().reverse();
   document.getElementById("shadowPanel").innerHTML = shadows.length
     ? '<table><tr><th>When</th><th>Setup</th><th>Entry</th><th>SL / TP</th><th>Outcome</th><th>Note</th></tr>' +
       shadows.map(s => {
@@ -299,7 +300,7 @@ function renderBlocked(d) {
     });
   });
   document.getElementById("blockedPanel").innerHTML = blocked.length
-    ? '<table>' + blocked.slice(0, 10).map(b => '<tr><td data-l="">' + esc((b.ts || "").replace("T", " ").slice(5, 16)) + '</td>' +
+    ? '<table>' + blocked.map(b => '<tr><td data-l="">' + esc((b.ts || "").replace("T", " ").slice(5, 16)) + '</td>' +
         '<td data-l=""><b>' + esc(b.dd.symbol) + '</b> ' + esc(b.dd.action) + ' (conf ' + esc(b.dd.confidence) + ')</td>' +
         '<td data-l="reason" style="max-width:340px">' + esc(b.reason) + '</td></tr>').join("") + '</table>'
     : '<div class="empty">Nothing blocked — every proposal passed the risk rules.</div>';
