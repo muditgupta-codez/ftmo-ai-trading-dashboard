@@ -390,6 +390,14 @@ function renderShadow(d) {
       shadows.map(s => {
         const r = s.status === "resolved" ? (s.result === "win" ? "WIN " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R"
                  : "LOSS " + (s.r_multiple >= 0 ? "+" : "") + s.r_multiple + "R") : s.status;
+        let outcomeHtml;
+        if (s.status === "resolved") {
+          outcomeHtml = '<span class="badge ' + (s.result === "win" ? "b-buy" : "b-rej") + '">' + r + '</span>';
+        } else if (s.status === "open") {
+          outcomeHtml = '<span class="badge b-close">OPEN</span>';
+        } else {
+          outcomeHtml = '<span class="badge" style="background:var(--line);color:var(--muted)">' + esc(r || "—") + '</span>';
+        }
         const px = (d.prices || {})[s.symbol];
         const risk = Math.abs(s.entry - s.sl) || null;
         let nowCell;
@@ -411,7 +419,7 @@ function renderShadow(d) {
           '<td data-l="entry">' + s.entry + '</td>' +
           '<td data-l="sl / tp">' + s.sl + ' / ' + s.tp + '</td>' +
           nowCell +
-          '<td data-l="result">' + statusBadge(r) + (s.managed_exit ? ' <span style="font-size:10px;color:var(--muted)">🔒 managed</span>' : '') + '</td>' +
+          '<td data-l="result">' + outcomeHtml + (s.managed_exit ? ' <span style="font-size:10px;color:var(--muted)">🔒 managed</span>' : '') + '</td>' +
           '<td data-l="why" style="max-width:300px">' + esc(s.why_refused || s.strategy || "") + '</td></tr>';
       }).join("") + '</table>'
     : '<div class="empty">No declined setups tracked yet.</div>');
