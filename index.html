@@ -873,7 +873,9 @@ let reg_active = null;
     await navigator.serviceWorker.ready;
     if (Notification.permission === "granted") {
       const sub = await reg_active.pushManager.getSubscription();
-      if (sub) pushBtn.style.display = "none";  // already enabled
+      if (sub) { pushBtn.style.display = "none"; return; }  // fully enabled
+      pushBtnState("🔔");  // permission yes, subscription missing — one tap fixes it
+      return;
     }
   } catch (e) { /* leave the bell visible — the tap will report the real error */ }
 })();
