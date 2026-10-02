@@ -499,7 +499,7 @@ function metricsBlock(name, equity, initial, dayStart, daily, dailyUsd, extrasHt
   opts = opts || {};
   const tgt = opts.target_pct || 10;
   const floatPl = opts.floatPl != null ? opts.floatPl : null;
-  const floatCap = opts.floatCap || 10.0;
+  const floatCap = opts.floatCap === null ? null : (opts.floatCap || 10.0);
   const maxDD = opts.max_dd_pct || 10;
   const S1 = initial * (1 + tgt / 100);          // phase 1 target
   const S2 = opts.showStep2 ? S1 * 1.05 : null;  // FTMO 2-Step phase 2 (+5%)
@@ -530,9 +530,11 @@ function metricsBlock(name, equity, initial, dayStart, daily, dailyUsd, extrasHt
     rows += row(`Daily loss · −3% (worst point)`, daily, danger(daily),
                 daily.toFixed(0) + "% used" + (dailyUsd ? ` · −$${fmt(dailyUsd.used)} of −$${fmt(dlLimit)}` : ""));
   }
-  rows += fl == null
-    ? row(`Floating cap · −1% (−$${fmt(initial * floatCap / 100)} max · worst)`, 0, "var(--line)", "—")
-    : row(`Floating cap · −1% (−$${fmt(initial * floatCap / 100)} max · worst)`, fl, danger(fl), fl.toFixed(0) + "% · " + (floatPl >= 0 ? "+" : "−") + "$" + fmt(Math.abs(floatPl)));
+  rows += floatCap == null
+    ? ""
+    : (fl == null
+        ? row(`Floating cap · −1% (−$${fmt(initial * floatCap / 100)} max · worst)`, 0, "var(--line)", "—")
+        : row(`Floating cap · −1% (−$${fmt(initial * floatCap / 100)} max · worst)`, fl, danger(fl), fl.toFixed(0) + "% · " + (floatPl >= 0 ? "+" : "−") + "$" + fmt(Math.abs(floatPl))));
   const buf = equity - floor;
   return `<div style="padding:11px 13px;border-bottom:1px solid var(--line)">
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;align-items:baseline;margin-bottom:4px">
@@ -594,9 +596,35 @@ function renderObjectives(d) {
     parts.push(`floating <span class="${cls(floatPl)}"><b>${sign(floatPl)}</b></span>`);
   }
   if (parts.length) extraHtml = `<div class="lvl" style="margin-top:3px">${parts.join(" · ")}</div>`;
+  // FundingPips 2-Step Pro trial ($5k) — mirrored from FTMO live via FPAgent
+  const fp = d.fp_account || {};
+  let fpBlock = "";
+  if (fp.connected) {
+    const fpBasis = fp.basis || 5000;
+    let fpDaily = null, fpDailyUsd = null;
+    if (fp.day_pl != null) {
+      const anchor = Math.max(1, (fp.equity || fpBasis) - fp.day_pl);
+      fpDaily = Math.max(0, -fp.day_pl / (anchor * 0.03) * 100);
+      fpDailyUsd = { used: Math.max(0, -fp.day_pl), limit: anchor * 0.03 };
+    }
+    const fpExtras = [];
+    fpExtras.push(`day P/L <b class="${cls(fp.day_pl || 0)}">${fp.day_pl != null ? sign(fp.day_pl) : "—"}</b>`);
+    fpExtras.push(`Phase 1 progress <b>${(fp.phase1_progress_pct || 0).toFixed(2)}%</b> / 6%`);
+    fpExtras.push(`${fp.days_left != null ? fp.days_left + "d left" : ""} ${fp.banked_phase1 ? "· 🎯 P1 banked" : ""} ${fp.halted ? "· ⛔ HALTED" : ""}`);
+    if ((fp.mirror_desired || []).length) {
+      fpExtras.push(`mirroring ${fp.mirror_desired.length} FTMO trade${fp.mirror_desired.length > 1 ? "s" : ""}`);
+    }
+    fpBlock = metricsBlock("FundingPips trial — 2-Step Pro (mirror)",
+      fp.equity || fpBasis, fpBasis, null, fpDaily, fpDailyUsd,
+      `<div class="lvl" style="margin-top:3px">${fpExtras.join(" · ")}</div>`,
+      { target_pct: 6, max_dd_pct: 6, floatCap: null, floatPl: fp.floating || 0 });
+  } else if (fp.login) {
+    fpBlock = `<div class="lvl" style="margin:2px 13px 8px">🅕 <b>FundingPips trial 40000339300</b> ($5,000 2-Step Pro) — ⏳ waiting for trade-server connection${fp.note ? " · " + esc(fp.note) : ""}</div>`;
+  }
   document.getElementById("objPanel").innerHTML = sharkMark +
     metricsBlock("FTMO trial — 🦈 Shark test ($5k sizing)", rEq - vOff, basis, acc.day_start_balance, rDaily, rDailyUsd, extraHtml, { target_pct: 6, max_dd_pct: 6, floatCap: 1, floatPl: floatPl }) +
-    (xmBlock || "");  // XM mirror IS the shadow ledger now (real fills) — no separate simulated block
+    (xmBlock || "") +
+    (fpBlock || "");  // XM mirror IS the shadow ledger now (real fills) — no separate simulated block
 }
 
 function renderShadow(d) {
