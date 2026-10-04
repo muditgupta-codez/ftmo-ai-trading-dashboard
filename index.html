@@ -561,18 +561,6 @@ function renderObjectives(d) {
     rDaily = Math.max(0, used / (basis * 0.03) * 100);
     rDailyUsd = { used: used, limit: basis * 0.03 };
   }
-  // XM mirror account (Shark test)
-  const xm = d.xm_account || {};
-  let xmBlock = "";
-  if (xm.equity != null) {
-    const xmInit = 5000;
-    const xmDay = xm.day_start || xmInit;
-    let xmDaily = null, xmDailyUsd = null;
-    const worstXm = (typeof xm.day_low === "number") ? Math.min(xm.day_low, xm.equity) : xm.equity;
-    xmDaily = Math.max(0, (xmDay - worstXm) / (xmDay * 0.03) * 100);
-    xmDailyUsd = { used: Math.max(0, xmDay - worstXm), limit: xmDay * 0.03 };
-    xmBlock = metricsBlock("XM mirror — 🦈 Shark test", xm.equity, xmInit, xmDay, xmDaily, xmDailyUsd, "", { target_pct: 6, max_dd_pct: 6, floatCap: 1, floatPl: xm.floating });
-  }
   // shark test week marker
   let sharkMark = "";
   try {
@@ -623,8 +611,7 @@ function renderObjectives(d) {
   }
   document.getElementById("objPanel").innerHTML = sharkMark +
     metricsBlock("FTMO trial — 🦈 Shark test ($5k sizing)", rEq - vOff, basis, acc.day_start_balance, rDaily, rDailyUsd, extraHtml, { target_pct: 6, max_dd_pct: 6, floatCap: 1, floatPl: floatPl }) +
-    (xmBlock || "") +
-    (fpBlock || "");  // XM mirror IS the shadow ledger now (real fills) — no separate simulated block
+    (fpBlock || "");
 }
 
 function renderShadow(d) {
