@@ -407,19 +407,23 @@ async function refresh() {
     });
     let best = null;
     Object.entries(confBySym).forEach(([s, v]) => {
+      // entry convictions only — a hold's confidence is confidence in STANDING
+      // ASIDE, and showing it here read as "the AI wants to trade" (Oct 4)
+      if (v.action !== "buy" && v.action !== "sell") return;
       if (typeof v.conf === "number" && (!best || v.conf > best.conf)) best = Object.assign({ s }, v);
     });
+    const heldN = Object.values(confBySym).filter(v => v.action === "hold").length;
     const confColor = c => c >= 70 ? "var(--green)" : c >= 50 ? "var(--amber)" : "var(--muted)";
-    document.getElementById("confV").textContent = best ? best.conf : "—";
+    document.getElementById("confV").textContent = best ? best.conf : "no setup";
     document.getElementById("confV").className = "v " + (best ? (best.conf >= 70 ? "pos" : best.conf >= 50 ? "amber" : "") : "");
     const fill = document.getElementById("confBarFill");
     fill.style.width = (best ? Math.max(0, Math.min(100, best.conf)) : 0) + "%";
     fill.style.background = best ? confColor(best.conf) : "";
     document.getElementById("confSub").textContent = best
-      ? best.s + " · top of " + Object.keys(confBySym).length + " watched · trade bar is 70"
-      : "waiting for first cycle";
+      ? best.s + " " + best.action + " · strongest entry · trade bar is 70"
+      : "no entry signal · " + heldN + " of " + Object.keys(confBySym).length + " holding · bar is 70";
     const confMeter = c => (c && typeof c.conf === "number")
-      ? `<div class="conf" title="${esc((c.regime || "") + (c.approach ? " · " + c.approach : ""))}"><div class="cbar"><i style="width:${Math.max(0, Math.min(100, c.conf))}%;background:${confColor(c.conf)}"></i></div><span>${c.conf}</span></div>`
+      ? `<div class="conf" title="${esc((c.action || "") + " · " + (c.regime || "") + (c.approach ? " · " + c.approach : ""))}"><div class="cbar"><i style="width:${Math.max(0, Math.min(100, c.conf))}%;background:${confColor(c.conf)}"></i></div><span>${c.conf}</span></div>`
       : "";
     tKeys.sort((a, b) => {
       const ca = (confBySym[a] && typeof confBySym[a].conf === "number") ? confBySym[a].conf : -1;

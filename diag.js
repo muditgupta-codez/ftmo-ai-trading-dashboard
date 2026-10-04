@@ -62,7 +62,9 @@
   const objMetrics = objHtml.includes("Phase 1 target · +6%") && objHtml.includes("Max loss") && objHtml.includes("Daily loss") && objHtml.includes("Floating cap");
   console.log("  objectives: per-metric bars:", mbarCount, "| all metric rows:", objMetrics,
     "| blocks:", (objHtml.match(/FTMO trial/g) || []).length, "ftmo +", (objHtml.match(/XM mirror/g) || []).length, "xm");
-  if (mbarCount < 8 || !objMetrics) fail++;
+  // >=4 = one bar per metric of a single account block (was 8 while the XM
+  // mirror block existed alongside FTMO; XM removed Oct 4 -> 7 renders)
+  if (mbarCount < 4 || !objMetrics) fail++;
   const oldDaily = objHtml.includes("daily-loss used");
   console.log("  objectives: old text layout gone:", !oldDaily);
   if (oldDaily) fail++;
@@ -116,9 +118,14 @@
   if (tp.includes('max-width:340px') && !tp.includes('class="wide"')) fail++;
   const tKeysLen = (d.triggers && d.triggers.triggers) ? Object.keys(d.triggers.triggers).length : 0;
   const confTxt = (els["confV"] && els["confV"]._t) || "";
+  const confSubTxt = (els["confSub"] && els["confSub"]._t) || "";
   const confMeters = (tp.match(/class="conf"/g) || []).length;
-  console.log("  confidence card:", confTxt || "(empty)", "| trigger meters:", confMeters);
-  if (!/^\d+$/.test(confTxt)) fail++;
+  console.log("  confidence card:", confTxt || "(empty)", "| sub:", confSubTxt, "| trigger meters:", confMeters);
+  // numeric = strongest ENTRY conviction; "no setup" = every symbol holding (must explain itself)
+  const confOk = /^\d+$/.test(confTxt)
+    ? /strongest entry/.test(confSubTxt)
+    : (confTxt === "no setup" && /holding/.test(confSubTxt));
+  if (!confOk) fail++;
   if (tKeysLen > 0 && confMeters === 0) fail++;
   const trigConfs = [...tp.matchAll(/<div class="conf"[^>]*>[\s\S]*?<span>(\d+)<\/span>/g)].map(m => +m[1]);
   const trigSorted = trigConfs.every((v, i) => i === 0 || trigConfs[i - 1] >= v);
