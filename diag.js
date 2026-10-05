@@ -63,6 +63,10 @@
   if (trigDupes.length) fail++;
   if (trigSyms.length && !tp.includes('data-l="exit >"')) fail++;
   const hasToday = sp.includes("today +$") || sp.includes("today −$") || sp.includes("today -$");
+  // learning-ledger rule: the shadow panel must never claim tracking stops
+  if (/no new setups tracked|no new tracking until tomorrow|mirrors live guardrail/i.test(sp)) {
+    console.log("  GATE FAIL: shadow panel still claims loss-gated tracking!"); fail++;
+  }
   console.log("  shadow strip daily P/L shown:", hasToday, "| server account:", !!(d.shadow_account && d.shadow_account.balance));
   const objHtml = (els["objPanel"] && els["objPanel"]._h) || "";
   const mbarCount = (objHtml.match(/class="mbar"/g) || []).length;
