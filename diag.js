@@ -55,6 +55,13 @@
   const trigColored = (tp.match(/<span class="(pos|neg)">/g) || []).length;
   console.log("  trigger colored spans:", trigColored);
   if (tp.includes("data-sym=") && trigColored === 0) fail++;
+  // short-side exits must render (close_short_above) + one row per ticker
+  const trigSyms = [...tp.matchAll(/<td><b>([A-Za-z0-9._]+)<\/b>/g)].map(m => m[1]);
+  const trigDupes = trigSyms.filter((s, i) => trigSyms.indexOf(s) !== i);
+  console.log("  trigger rows:", trigSyms.length, "| duplicate tickers:", trigDupes.length ? trigDupes.join(",") : "none",
+    "| short-exit cells:", (tp.match(/data-l="exit >"/g) || []).length);
+  if (trigDupes.length) fail++;
+  if (trigSyms.length && !tp.includes('data-l="exit >"')) fail++;
   const hasToday = sp.includes("today +$") || sp.includes("today −$") || sp.includes("today -$");
   console.log("  shadow strip daily P/L shown:", hasToday, "| server account:", !!(d.shadow_account && d.shadow_account.balance));
   const objHtml = (els["objPanel"] && els["objPanel"]._h) || "";

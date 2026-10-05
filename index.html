@@ -432,8 +432,15 @@ async function refresh() {
     });
 
     const prices = d.prices || {};
+    // Rebuild the trigger table only when its ORDER or CONTENT actually changed.
+    // A full innerHTML rewrite every 30s reshuffled rows under the reader
+    // mid-scroll, which read as tickers repeating. Now cells stay live via
+    // applyTick between rebuilds.
+    const trigSig = tKeys.join(",") + "|" + JSON.stringify(trig);
+    if (trigSig !== trigSigLast) {
+    trigSigLast = trigSig;
     document.getElementById("trigPanel").innerHTML = tKeys.length ? `<table>
-      <tr><th>Symbol</th><th>Now</th><th>Long above</th><th>Short below</th><th>Exit long if below</th><th>Plan</th></tr>
+      <tr><th>Symbol</th><th>Now</th><th>Long above</th><th>Short below</th><th>Exit long if below</th><th>Exit short if above</th><th>Plan</th></tr>
       ${tKeys.map(s => { const t = trig[s]; const px = prices[s];
         const side = t.long_above ? "long" : (t.short_below ? "short" : "");
         const lvl = px ? (t.long_above ?? t.short_below) : null;
@@ -447,9 +454,10 @@ async function refresh() {
         return `<tr>
         <td><b>${esc(s)}</b>${confMeter(confBySym[s])}</td>
         <td data-sym="${esc(s)}" data-lvl="${lvl ?? ""}" data-side="${side}">${px != null ? `<span class="${c}">${px}</span>` : "—"}${dist}</td>
-        <td data-l="long >">${t.long_above ?? "—"}</td><td data-l="short <">${t.short_below ?? "—"}</td><td data-l="exit <">${t.close_long_below ?? "—"}</td>
+        <td data-l="long >">${t.long_above ?? "—"}</td><td data-l="short <">${t.short_below ?? "—"}</td><td data-l="exit <">${t.close_long_below ?? "—"}</td><td data-l="exit >">${t.close_short_above ?? "—"}</td>
         <td class="wide" data-l="plan" style="max-width:340px">${esc(t.note || "")}</td></tr>`; }).join("")}</table>`
       : `<div class="empty">No levels armed.</div>`;
+    }
 
     const trades = (d.trades || []).slice().reverse();
     setCnt("cntHist", trades.length);
@@ -738,6 +746,7 @@ function renderPositions(rows) {
 }
 
 let LATEST = null;
+let trigSigLast = "";   // last rendered trigger order+content (skip no-op rebuilds)
 
 function noteExit(msg, bad) {
   let t = document.getElementById("exitToast");
