@@ -1,0 +1,21 @@
+name: Deploy to Coolify
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify deploy
+        run: |
+          RESP=$(curl -sS -m 60 -X POST \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"uuid":"4iswm3xeq35e3qy4rfcfovjf","force":true}' \
+            "http://falcon.zoophost.com:8000/api/v1/deploy")
+          echo "$RESP"
+          echo "$RESP" | grep -q "deployment_uuid\|already in progress" || {
+            echo "::error::Coolify deploy trigger failed"; exit 1; }
