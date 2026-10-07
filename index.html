@@ -151,6 +151,7 @@
     <div class="hstats">
       <div class="hstat"><span class="k">Equity</span><b id="hEquity">—</b></div>
       <div class="hstat"><span class="k">Today</span><b id="hToday">—</b></div>
+      <div class="hstat"><span class="k">Brain</span><b id="hBrain">—</b></div>
     </div>
   </header>
 
@@ -159,6 +160,7 @@
     <div class="card"><div class="k">Today</div><div class="v" id="dayPl">—</div><div class="s" id="dayTxt">since day start</div></div>
     <div class="card"><div class="k">Open positions</div><div class="v" id="posCount">—</div><div class="s" id="posTxt">—</div></div>
     <div class="card"><div class="k">Bot status</div><div class="v" id="botState">—</div><div class="s" id="botTxt">—</div></div>
+    <div class="card"><div class="k">AI brain</div><div class="v" id="brainState">—</div><div class="s" id="brainTxt">—</div></div>
     <div class="card"><div class="k">AI confidence</div><div class="v" id="confV">—</div>
       <div class="bar" style="height:5px;margin:6px 0 0"><div id="confBarFill" style="width:0%"></div></div>
       <div class="s" id="confSub">waiting for first cycle</div></div>
@@ -334,8 +336,26 @@ async function refresh() {
     document.getElementById("botState").textContent = alive ? "Running" : "Data stale";
     document.getElementById("botState").className = "v " + (alive ? "pos" : "amber");
     const brainTxt = (w.brain && w.brain.last_result) ? w.brain.last_result : "idle";
-    document.getElementById("botTxt").textContent = `watcher ${ago(w.ts)} · push ${ago(d.received_at)} · brain ${esc(brainTxt === "skipped" ? "monitoring" : brainTxt)}`;
+    const brainShort = (brainTxt === "skipped" ? "monitoring" : brainTxt.replace(/^exit=\d+:\s*/, "")).slice(0, 60);
+    document.getElementById("botTxt").textContent = `watcher ${ago(w.ts)} · push ${ago(d.received_at)} · brain ${esc(brainShort)}`;
     if (acc.halted) document.getElementById("botTxt").textContent += " · HALTED";
+
+    // AI brain online status: model reachable + answering recently = ONLINE
+    const bb = w.brain || {};
+    const bState = document.getElementById("brainState"), bTxt = document.getElementById("brainTxt"), hBrain = document.getElementById("hBrain");
+    const low = (bb.last_result || "").toString().toLowerCase();
+    const bFailed = low.includes("exit=5") || low.includes("model-unavailable") || low.includes("failed") || low.includes("error");
+    const bPartial = low.includes("partial");
+    const bAgeMin = bb.last_attempt ? (Date.now() - new Date(bb.last_attempt).getTime()) / 6e4 : 1e9;
+    let bLabel = "—", bCls = "", bSub = "waiting for data";
+    if (age >= 180) { bLabel = "No data"; bCls = "amber"; bSub = "watcher not pushing — check the PC"; }
+    else if (!bb.last_attempt) { bLabel = "Idle"; bSub = "no decision cycle yet"; }
+    else if (bAgeMin > 60) { bLabel = "Quiet"; bCls = "amber"; bSub = "last decision " + ago(bb.last_attempt); }
+    else if (bFailed) { bLabel = "OFFLINE"; bCls = "neg"; bSub = "model unreachable · last try " + ago(bb.last_attempt) + " · auto-retrying"; }
+    else { bLabel = "ONLINE"; bCls = "pos"; bSub = "last decision " + ago(bb.last_attempt) + (bPartial ? " · some symbols skipped" : " · all clear"); }
+    bState.textContent = bLabel; bState.className = "v " + bCls;
+    bTxt.textContent = bSub;
+    hBrain.textContent = bLabel; hBrain.className = bCls;
 
     const news = d.news || {};
     let newsHtml = "";
