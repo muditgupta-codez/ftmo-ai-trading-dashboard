@@ -442,6 +442,12 @@ async function refresh() {
     document.getElementById("confSub").textContent = best
       ? best.s + " " + best.action + " · strongest entry · trade bar is 70"
       : "no entry signal · " + heldN + " of " + Object.keys(confBySym).length + " holding · bar is 70";
+    const verdictBadge = c => {
+      if (!c || typeof c.conf !== "number") return "";
+      const cls = c.action === "buy" ? "b-buy" : c.action === "sell" ? "b-sell" : "";
+      const extra = cls ? "" : "background:var(--line);color:var(--muted);";
+      return `<span class="badge ${cls}" style="margin-left:6px;${extra}">${esc((c.action || "—").toUpperCase())}</span>`;
+    };
     const confMeter = c => (c && typeof c.conf === "number")
       ? `<div class="conf" title="${esc((c.action || "") + " · " + (c.regime || "") + (c.approach ? " · " + c.approach : ""))}"><div class="cbar"><i style="width:${Math.max(0, Math.min(100, c.conf))}%;background:${confColor(c.conf)}"></i></div><span>${c.conf}</span></div>`
       : "";
@@ -456,7 +462,8 @@ async function refresh() {
     // A full innerHTML rewrite every 30s reshuffled rows under the reader
     // mid-scroll, which read as tickers repeating. Now cells stay live via
     // applyTick between rebuilds.
-    const trigSig = tKeys.join(",") + "|" + JSON.stringify(trig);
+    const trigSig = tKeys.join(",") + "|" + JSON.stringify(trig) + "|" +
+      tKeys.map(k => { const v = confBySym[k]; return v ? (v.action + ":" + v.conf) : "-"; }).join(",");
     if (trigSig !== trigSigLast) {
     trigSigLast = trigSig;
     document.getElementById("trigPanel").innerHTML = tKeys.length ? `<table>
@@ -472,7 +479,7 @@ async function refresh() {
           dist = `<div class="lvl"><span class="${c}">${d2 >= 0 ? "+" : ""}${d2.toFixed(2)}% vs ${side} trigger</span></div>`;
         }
         return `<tr>
-        <td><b>${esc(s)}</b>${confMeter(confBySym[s])}</td>
+        <td><b>${esc(s)}</b>${verdictBadge(confBySym[s])}${confMeter(confBySym[s])}</td>
         <td data-sym="${esc(s)}" data-lvl="${lvl ?? ""}" data-side="${side}">${px != null ? `<span class="${c}">${px}</span>` : "—"}${dist}</td>
         <td data-l="long >">${t.long_above ?? "—"}</td><td data-l="short <">${t.short_below ?? "—"}</td><td data-l="exit <">${t.close_long_below ?? "—"}</td><td data-l="exit >">${t.close_short_above ?? "—"}</td>
         <td class="wide" data-l="plan" style="max-width:340px">${esc(t.note || "")}</td></tr>`; }).join("")}</table>`
