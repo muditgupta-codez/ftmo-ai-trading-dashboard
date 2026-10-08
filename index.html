@@ -221,6 +221,25 @@
 
 <script>
 const fmt = n => (n === null || n === undefined) ? "—" : Number(n).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+// All bot timestamps are naive IST (the bot PC's clock); news time_utc is UTC.
+// Display everything as 12-hour am/pm labelled IST.
+function ist12(hStr, mStr) {
+  let h = parseInt(hStr, 10);
+  const ap = h >= 12 ? "pm" : "am";
+  h = h % 12; if (h === 0) h = 12;
+  return h + ":" + mStr + ap;
+}
+function istTs(ts, withDate) {
+  const m = String(ts || "").match(/(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})/);
+  if (!m) return String(ts || "—");
+  return (withDate ? m[1].slice(5) + " " : "") + ist12(m[2], m[3]) + " IST";
+}
+function istUtc(ts) {  // "MM-DD HH:MM" in UTC -> IST am/pm
+  const m = String(ts || "").match(/(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
+  if (!m) return "";
+  const dt = new Date(Date.UTC(2000, +m[1] - 1, +m[2], +m[3], +m[4]) + 330 * 60000);
+  return ist12(String(dt.getUTCHours()).padStart(2, "0"), String(dt.getUTCMinutes()).padStart(2, "0")) + " IST";
+}
 const sign = n => (n >= 0 ? "+" : "") + fmt(n);
 const cls = n => n >= 0 ? "pos" : "neg";
 const ago = ts => {
@@ -370,7 +389,7 @@ async function refresh() {
         const m = e.in_minutes;
         const dur = m >= 60 ? Math.floor(m/60) + "h" + String(m%60).padStart(2, "0") + "m" : m + "min";
         const impactCls = e.impact === "High" ? "neg" : "amber";
-        rows += '<tr><td data-l="in">' + dur + '</td><td class="wide" data-l="event">' + esc(e.country) + ' ' + esc(e.title) +
+        rows += '<tr><td data-l="in">' + dur + (e.time_utc ? '<div style="font-size:10.5px;color:var(--muted)">' + esc(istUtc(e.time_utc)) + '</div>' : '') + '</td><td class="wide" data-l="event">' + esc(e.country) + ' ' + esc(e.title) +
                 '</td><td data-l="impact" class="' + impactCls + '">' + esc(e.impact) + '</td></tr>';
       });
       newsHtml += '<table><tr><th>When</th><th>Event</th><th>Impact</th></tr>' + rows + '</table>';
@@ -403,7 +422,7 @@ async function refresh() {
         ${dd.regime ? `<span class="pill">${esc(dd.regime)}</span>` : ""}
         ${dd.approach ? `<span class="pill">${esc(dd.approach)}</span>` : ""}
         <span>·</span><span>${esc(meta.model ? meta.model.split("/").pop() : "")}</span>
-        <span>·</span><span>${meta.latency_s}s</span><span>·</span><span>${esc((meta.ts || "").replace("T", " ").slice(0, 16))}</span></div>
+        <span>·</span><span>${meta.latency_s}s</span><span>·</span><span>${esc(istTs(meta.ts, false))}</span></div>
         <div class="why">${esc(dd.reason || "")}${lots}</div>${lvl}
       </div>`;
     }).join("") || `<div class="empty">No decisions yet.</div>`;
@@ -495,12 +514,14 @@ async function refresh() {
     document.getElementById("tradePanel").innerHTML = trades.length ? `<table>
       <tr><th>Time</th><th>Symbol</th><th>Action</th><th>Lots</th><th>Price</th><th>SL</th><th>TP</th><th>Ticket</th></tr>
       ${trades.map(t => `<tr>
-        <td data-l="">${esc((t.ts || "").replace("T", " ").slice(0, 16))}</td><td data-l=""><b>${esc(t.symbol)}</b></td>
+        <td data-l="">${esc(istTs(t.ts, true))}</td><td data-l=""><b>${esc(t.symbol)}</b></td>
         <td data-l="" class="${t.action === "buy" ? "pos" : "neg"}">${esc(t.action)}</td><td data-l="lots">${t.lots}</td>
         <td data-l="@">${t.price}</td><td data-l="sl">${t.sl}</td><td data-l="tp">${t.tp}</td><td data-l="#">${t.ticket}</td></tr>`).join("")}</table>`
       : `<div class="empty">No trades yet.</div>`;
 
-    document.getElementById("journal").textContent = d.journal || "(journal empty)";
+    document.getElementById("journal").textContent =
+      (d.journal || "(journal empty)").replace(/(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/g,
+        (_, dd, hh, mm) => istTs(dd + "T" + hh + ":" + mm, true));
     document.getElementById("foot").textContent = `FTMO demo ${acc.login ? "•••" + String(acc.login).slice(-4) : ""} @ ${acc.server || "—"} · last push ${ago(d.received_at)} · auto-refresh 30s`;
     // live label reflects DATA freshness, not one lucky/unlucky fetch —
     // flaky networks (e.g. a broken IPv6 path) shouldn't scare the user
@@ -744,7 +765,7 @@ function renderBlocked(d) {
     });
   });
   document.getElementById("blockedPanel").innerHTML = blocked.length
-    ? '<table>' + blocked.map(b => '<tr><td data-l="">' + esc((b.ts || "").replace("T", " ").slice(5, 16)) + '</td>' +
+    ? '<table>' + blocked.map(b => '<tr><td data-l="">' + esc(istTs(b.ts, true)) + '</td>' +
         '<td data-l=""><b>' + esc(b.dd.symbol) + '</b> ' + esc(b.dd.action) + ' (conf ' + esc(b.dd.confidence) + ')</td>' +
         '<td class="wide" data-l="reason" style="max-width:340px">' + esc(b.reason) + '</td></tr>').join("") + '</table>'
     : '<div class="empty">Nothing blocked — every proposal passed the risk rules.</div>';
