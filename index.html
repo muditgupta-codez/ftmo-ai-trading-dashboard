@@ -451,7 +451,11 @@ async function refresh() {
     const confMeter = c => (c && typeof c.conf === "number")
       ? `<div class="conf" title="${esc((c.action || "") + " · " + (c.regime || "") + (c.approach ? " · " + c.approach : ""))}"><div class="cbar"><i style="width:${Math.max(0, Math.min(100, c.conf))}%;background:${confColor(c.conf)}"></i></div><span>${c.conf}</span></div>`
       : "";
+    const sigPrio = s => { const v = confBySym[s];
+      return (v && (v.action === "buy" || v.action === "sell")) ? 0 : 1; };
     tKeys.sort((a, b) => {
+      const pa = sigPrio(a), pb = sigPrio(b);
+      if (pa !== pb) return pa - pb;   // entry signals first, holds last
       const ca = (confBySym[a] && typeof confBySym[a].conf === "number") ? confBySym[a].conf : -1;
       const cb = (confBySym[b] && typeof confBySym[b].conf === "number") ? confBySym[b].conf : -1;
       return cb - ca;
