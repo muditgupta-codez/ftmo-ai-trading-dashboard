@@ -520,12 +520,25 @@ async function refresh() {
 
     const trades = (d.trades || []).slice().reverse();
     setCnt("cntHist", trades.length);
-    document.getElementById("tradePanel").innerHTML = trades.length ? `<table>
-      <tr><th>Time</th><th>Symbol</th><th>Action</th><th>Lots</th><th>Price</th><th>SL</th><th>TP</th><th>Ticket</th></tr>
+    const resBadge = t => t.outcome === "open" ? '<span class="badge b-close">OPEN</span>'
+      : (t.outcome === "win" || t.outcome === "loss")
+        ? '<span class="badge ' + (t.outcome === "win" ? "b-buy" : "b-rej") + '">'
+          + (t.outcome === "win" ? "WON" : "LOST") + " "
+          + (t.profit >= 0 ? "+$" : "−$") + fmt(Math.abs(t.profit || 0)) + '</span>'
+        : '<span class="badge" style="background:var(--line);color:var(--muted)">—</span>';
+    const closed = trades.filter(t => t.outcome === "win" || t.outcome === "loss");
+    const wins = closed.filter(t => t.outcome === "win").length;
+    const net = closed.reduce((a, t) => a + (t.profit || 0), 0);
+    const tally = closed.length
+      ? `<div class="lvl" style="padding:8px 13px;border-bottom:1px solid var(--line)"><b>${wins} won</b> · <b>${closed.length - wins} lost</b> · net <span class="${cls(net)}" style="font-weight:700">${sign(net)}</span> across ${closed.length} closed trades</div>`
+      : "";
+    document.getElementById("tradePanel").innerHTML = trades.length ? tally + `<table>
+      <tr><th>Time</th><th>Symbol</th><th>Action</th><th>Lots</th><th>Price</th><th>SL</th><th>TP</th><th>Result</th><th>Ticket</th></tr>
       ${trades.map(t => `<tr>
         <td data-l="">${esc(istTs(t.ts, true))}</td><td data-l="">${symLink(t.symbol)}</td>
         <td data-l="" class="${t.action === "buy" ? "pos" : "neg"}">${esc(t.action)}</td><td data-l="lots">${t.lots}</td>
-        <td data-l="@">${t.price}</td><td data-l="sl">${t.sl}</td><td data-l="tp">${t.tp}</td><td data-l="#">${t.ticket}</td></tr>`).join("")}</table>`
+        <td data-l="@">${t.price}</td><td data-l="sl">${t.sl}</td><td data-l="tp">${t.tp}</td>
+        <td data-l="result">${resBadge(t)}</td><td data-l="#">${t.ticket}</td></tr>`).join("")}</table>`
       : `<div class="empty">No trades yet.</div>`;
 
     document.getElementById("journal").textContent =
